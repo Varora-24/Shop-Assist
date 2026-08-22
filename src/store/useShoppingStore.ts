@@ -8,14 +8,21 @@ export type Item = {
   quantity: number | string;
 };
 
-export type Suggestion = Item & { originalItemId?: string };
+export type Suggestion = Item & { originalItemId?: string, type?: 'substitute' | 'history' };
+
+export type HistoryItem = {
+  name: string;
+  removedAt: number;
+};
 
 type ShoppingState = {
   items: Item[];
+  history: HistoryItem[];
   isListening: boolean;
   transcript: string;
   isLoading: boolean;
   suggestions: Suggestion[];
+  dismissedSuggestions: string[]; // item names dismissed
   
   // Actions
   addItem: (item: Omit<Item, 'id'>) => void;
@@ -26,32 +33,38 @@ type ShoppingState = {
   setIsLoading: (isLoading: boolean) => void;
   setSuggestions: (suggestions: Suggestion[]) => void;
   clearSuggestions: () => void;
+  dismissSuggestion: (suggestionId: string, suggestionName: string) => void;
   processVoiceCommand: (command: string) => Promise<void>;
+  checkHistorySuggestions: () => void;
 };
 
 const SUBSTITUTES: Record<string, string> = {
   'milk': 'Almond Milk',
-  'bread': 'Whole Wheat Bread',
+  'bread': 'Gluten-Free Bread',
   'sugar': 'Honey',
   'chicken': 'Tofu',
-  'butter': 'Olive Oil'
+  'butter': 'Olive Oil',
+  'beef': 'Paneer'
 };
 
 export const useShoppingStore = create<ShoppingState>()(
   persist(
     (set, get) => ({
-      items: [], // Empty initial state for production
+      items: [],
+      history: [],
       isListening: false,
       transcript: '',
       isLoading: false,
       suggestions: [],
+      dismissedSuggestions: [],
 
       replaceItem: (newItem, oldItemId) => {
         set((state) => {
            const newItems = state.items.filter(i => i.id !== oldItemId);
+           const id = Date.now().toString() + '-' + Math.floor(Math.random() * 1000);
            return {
-             items: [...newItems, { ...newItem, id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000) }],
-             suggestions: [] // clear suggestions on action
+             items: [...newItems, { ...newItem, id }],
+             suggestions: state.suggestions.filter(s => s.originalItemId !== oldItemId)
            };
         });
       },
@@ -63,14 +76,18 @@ export const useShoppingStore = create<ShoppingState>()(
         const newItemId = Date.now().toString() + '-' + Math.floor(Math.random() * 1000);
         
         for (const [key, substitute] of Object.entries(SUBSTITUTES)) {
-          if (lowerName.includes(key)) {
-            newSuggestions.push({
-              id: Date.now().toString() + '-sub',
-              name: substitute,
-              category: item.category,
-              quantity: 1,
-              originalItemId: newItemId
-            });
+          if (lowerName.includes(key) && !get().dismissedSuggestions.includes(substitute)) {
+            // Only add if substitute itself isn't already in the list
+            if (!get().items.some(i => i.name.toLowerCase().includes(substitute.toLowerCase()))) {
+                newSuggestions.push({
+                  id: Date.now().toString() + '-sub-' + Math.random(),
+                  name: substitute,
+                  category: item.category,
+                  quantity: 1,
+                  originalItemId: newItemId,
+                  type: 'substitute'
+                });
+            }
           }
         }
 
@@ -102,21 +119,12 @@ export const useShoppingStore = create<ShoppingState>()(
              let totalQty = currentQty + addQty;
              let finalUnit = '';
 
-             // Convert back to sensible unit
              if (isWeight) {
-               if (totalQty >= 1000) {
-                 totalQty = totalQty / 1000;
-                 finalUnit = 'kg';
-               } else {
-                 finalUnit = 'g';
-               }
+               if (totalQty >= 1000) { totalQty = totalQty / 1000; finalUnit = 'kg'; }
+               else { finalUnit = 'g'; }
              } else if (isVolume) {
-               if (totalQty >= 1000) {
-                 totalQty = totalQty / 1000;
-                 finalUnit = 'l';
-               } else {
-                 finalUnit = 'ml';
-               }
+               if (totalQty >= 1000) { totalQty = totalQty / 1000; finalUnit = 'l'; }
+               else { finalUnit = 'ml'; }
              } else {
                finalUnit = newUnit || oldUnit;
              }
@@ -128,31 +136,74 @@ export const useShoppingStore = create<ShoppingState>()(
              
              return {
                 items: updatedItems,
-                suggestions: newSuggestions.length > 0 ? newSuggestions : state.suggestions
+                suggestions: [...state.suggestions, ...newSuggestions]
              };
           }
 
+          // Also clear from history if added back
+          const newHistory = state.history.filter(h => h.name.toLowerCase() !== lowerName);
+
           return {
             items: [...state.items, { ...item, id: newItemId }],
-            suggestions: newSuggestions.length > 0 ? newSuggestions : state.suggestions
+            history: newHistory,
+            suggestions: [...state.suggestions, ...newSuggestions]
           };
         });
       },
 
       removeItem: (id) =>
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-        })),
+        set((state) => {
+          const item = state.items.find((i) => i.id === id);
+          const history = [...state.history];
+          if (item) {
+             history.push({ name: item.name, removedAt: Date.now() });
+          }
+          return {
+            items: state.items.filter((item) => item.id !== id),
+            history
+          };
+        }),
 
       setIsListening: (isListening) => set({ isListening }),
-      
       setTranscript: (transcript) => set({ transcript }),
-      
       setIsLoading: (isLoading) => set({ isLoading }),
-      
       setSuggestions: (suggestions) => set({ suggestions }),
-      
       clearSuggestions: () => set({ suggestions: [] }),
+      
+      dismissSuggestion: (suggestionId, suggestionName) => set((state) => ({
+        suggestions: state.suggestions.filter(s => s.id !== suggestionId),
+        dismissedSuggestions: [...state.dismissedSuggestions, suggestionName]
+      })),
+
+      checkHistorySuggestions: () => {
+         const { history, items, dismissedSuggestions, suggestions } = get();
+         const now = Date.now();
+         const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+         
+         const newSuggestions: Suggestion[] = [];
+         
+         for (const h of history) {
+            if (now - h.removedAt >= SEVEN_DAYS) {
+               const alreadyInList = items.some(i => i.name.toLowerCase() === h.name.toLowerCase());
+               const alreadyDismissed = dismissedSuggestions.includes(h.name);
+               const alreadySuggested = suggestions.some(s => s.name === h.name);
+               
+               if (!alreadyInList && !alreadyDismissed && !alreadySuggested) {
+                  newSuggestions.push({
+                     id: Date.now().toString() + '-hist-' + Math.random(),
+                     name: h.name,
+                     category: 'Uncategorized',
+                     quantity: 1,
+                     type: 'history'
+                  });
+               }
+            }
+         }
+         
+         if (newSuggestions.length > 0) {
+            set((state) => ({ suggestions: [...state.suggestions, ...newSuggestions] }));
+         }
+      },
 
       processVoiceCommand: async (command) => {
         const { setTranscript, setIsLoading, addItem, removeItem } = get();
@@ -200,7 +251,7 @@ export const useShoppingStore = create<ShoppingState>()(
     }),
     {
       name: 'shopping-list-storage',
-      partialize: (state) => ({ items: state.items }),
+      partialize: (state) => ({ items: state.items, history: state.history }),
     }
   )
 );

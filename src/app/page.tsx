@@ -2,6 +2,7 @@ import ShoppingList from '@/components/ShoppingList';
 import VoiceButton from '@/components/VoiceButton';
 import VisualFeedback from '@/components/VisualFeedback';
 import SuggestionsPanel from '@/components/SuggestionsPanel';
+import SeasonalPanel from '@/components/SeasonalPanel';
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
       <VisualFeedback />
       
       <div className="pt-24">
+        <SeasonalPanel />
         <SuggestionsPanel />
         <ShoppingList />
       </div>
