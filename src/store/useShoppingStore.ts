@@ -81,7 +81,7 @@ export const useShoppingStore = create<ShoppingState>()(
       clearSuggestions: () => set({ suggestions: [] }),
 
       processVoiceCommand: async (command) => {
-        const { setTranscript, setIsLoading, addItem, removeItem, items } = get();
+        const { setTranscript, setIsLoading, addItem, removeItem } = get();
         setTranscript(command);
         setIsLoading(true);
         
@@ -95,18 +95,23 @@ export const useShoppingStore = create<ShoppingState>()(
           if (!res.ok) throw new Error('API Error');
           const data = await res.json();
           
-          if (data.action === 'add') {
-            addItem({
-              name: data.item,
-              category: data.category || 'Uncategorized',
-              quantity: data.quantity || 1
-            });
-          } else if (data.action === 'remove') {
-            const itemToRemove = items.find(i => i.name.toLowerCase().includes(data.item.toLowerCase()));
-            if (itemToRemove) {
-              removeItem(itemToRemove.id);
-            } else {
-              console.warn('Item not found to remove:', data.item);
+          const results = Array.isArray(data) ? data : [data];
+          
+          for (const actionData of results) {
+            if (actionData.action === 'add') {
+              addItem({
+                name: actionData.item,
+                category: actionData.category || 'Uncategorized',
+                quantity: actionData.quantity || 1
+              });
+            } else if (actionData.action === 'remove') {
+              const currentItems = get().items;
+              const itemToRemove = currentItems.find(i => i.name.toLowerCase().includes(actionData.item.toLowerCase()));
+              if (itemToRemove) {
+                removeItem(itemToRemove.id);
+              } else {
+                console.warn('Item not found to remove:', actionData.item);
+              }
             }
           }
         } catch (error) {

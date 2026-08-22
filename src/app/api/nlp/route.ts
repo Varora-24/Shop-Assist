@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  Produce: ['apple', 'banana', 'mulberry', 'blueberry', 'orange', 'grape', 'carrot', 'onion', 'garlic'],
-  Dairy: ['milk', 'cheese', 'yogurt', 'butter', 'egg'],
-  Bakery: ['bread', 'bagel', 'croissant', 'muffin'],
-  Pantry: ['rice', 'pasta', 'flour', 'sugar', 'salt'],
-  Snacks: ['chip', 'cookie', 'cracker', 'popcorn'],
+  'Produce': ['apple', 'banana', 'mulberry', 'blueberry', 'strawberry', 'chiku', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg'],
+  'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer'],
+  'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun'],
+  'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce'],
+  'Snacks': ['chip', 'cookie', 'cracker', 'popcorn', 'nut', 'chocolate'],
+  'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb'],
+  'Beverages': ['water', 'juice', 'soda', 'coffee', 'tea', 'coke', 'pepsi'],
 };
 
 function inferCategory(itemName: string): string {
@@ -19,90 +21,94 @@ function inferCategory(itemName: string): string {
 }
 
 function cleanItemName(name: string): string {
-  // Lowercase normalize
   let cleanName = name.toLowerCase();
-  // Strip trailing punctuation
   cleanName = cleanName.replace(/[.,!?]+$/, '').trim();
+  // Strip some leftover adjectives just in case they slipped through
+  cleanName = cleanName.replace(/^(raw|fresh|frozen|canned)\s+/, '').trim();
   return cleanName;
 }
 
 function fallbackRegexParser(text: string) {
   let lowerText = text.toLowerCase();
   
-  // Strip filler phrases
   const fillers = [
-    "i would like to have some",
-    "i would like to have",
-    "i would like some",
-    "i would like",
-    "i want to buy some",
-    "i want to buy",
-    "i want some",
-    "i want",
-    "i need to buy some",
-    "i need to buy",
-    "i need some",
-    "i need",
-    "please add some",
-    "please add",
-    "add some",
-    "add",
-    "can you add some",
-    "can you add",
-    "can you get some",
-    "can you get",
-    "get some",
-    "get",
-    "buy some",
-    "buy",
-    "have some",
-    "have",
-    "some"
+    "how about a little bit of ", "how about ", 
+    "i would like to have some ", "i would like to have ", 
+    "i would like some ", "i would like ", 
+    "i want to buy some ", "i want to buy ", 
+    "i want some ", "i want ", 
+    "i need to buy some ", "i need to buy ", 
+    "i need some ", "i need ", 
+    "please add some ", "please add ", 
+    "add some ", "add ", 
+    "can you add some ", "can you add ", 
+    "can you get some ", "can you get ", 
+    "get some ", "get ", 
+    "buy some ", "buy ", 
+    "have some ", "have ", 
+    "some "
   ];
   
-  // Try to remove a filler from the beginning
   for (const filler of fillers) {
-    if (lowerText.startsWith(filler + ' ') || lowerText === filler) {
+    if (lowerText.startsWith(filler) || lowerText === filler.trim()) {
       lowerText = lowerText.substring(filler.length).trim();
       break;
     }
   }
 
-  // Basic check for remove
   let isRemove = false;
   if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ')) {
     isRemove = true;
     lowerText = lowerText.replace(/^(remove|delete)\s+/, '').trim();
   }
 
-  // Look for quantity
-  let quantity = 1;
-  const qtyMatch = lowerText.match(/^(a |an |one |two |three |four |five |six |seven |eight |nine |ten |\d+\s+)/);
-  if (qtyMatch) {
-    const qtyStr = qtyMatch[1].trim();
-    const wordToNum: Record<string, number> = {
-      'a': 1, 'an': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
-      'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
-    };
-    quantity = wordToNum[qtyStr] || parseInt(qtyStr, 10);
-    if (isNaN(quantity)) quantity = 1;
-    lowerText = lowerText.substring(qtyMatch[0].length).trim();
+  // Replace delimiters with |
+  let splitText = lowerText
+    .replace(/,\s*/g, '|')
+    .replace(/\s+and\s+/g, '|')
+    .replace(/\s+also\s+/g, '|')
+    .replace(/\s+as well\s+/g, '|');
+    
+  // Clean trailing delimiters
+  splitText = splitText.replace(/\|\s*$/g, '');
+  
+  const rawItems = splitText.split('|').map(s => s.trim()).filter(Boolean);
+  const results = [];
+  
+  for (let rawItem of rawItems) {
+    let quantity = 1;
+    const qtyMatch = rawItem.match(/^(a |an |one |two |three |four |five |six |seven |eight |nine |ten |\d+\s+)/);
+    if (qtyMatch) {
+      const qtyStr = qtyMatch[1].trim();
+      const wordToNum: Record<string, number> = {
+        'a': 1, 'an': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
+        'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
+      };
+      quantity = wordToNum[qtyStr] || parseInt(qtyStr, 10);
+      if (isNaN(quantity)) quantity = 1;
+      rawItem = rawItem.substring(qtyMatch[0].length).trim();
+    }
+    
+    // Sometimes raw items start with "of " (e.g. "a little bit of raw chicken")
+    rawItem = rawItem.replace(/^of\s+/, '').trim();
+    
+    let item = cleanItemName(rawItem.replace(/from my list$/g, '').replace(/to my list$/g, ''));
+    if (!item) continue;
+    
+    results.push({
+      action: isRemove ? 'remove' : 'add',
+      quantity,
+      item,
+      category: inferCategory(item),
+    });
   }
 
-  // Clean remaining text as the item name
-  let item = cleanItemName(lowerText.replace(/from my list$/g, '').replace(/to my list$/g, ''));
-
-  // If item is empty after all this, we failed to parse anything meaningful, fallback to original text
-  if (!item) {
-    item = cleanItemName(text);
-  }
-
-  return {
+  return results.length > 0 ? results : [{
     action: isRemove ? 'remove' : 'add',
-    quantity,
-    item,
-    category: inferCategory(item),
-  };
+    quantity: 1,
+    item: cleanItemName(text),
+    category: 'Uncategorized'
+  }];
 }
 
 export async function POST(request: Request) {
@@ -124,14 +130,16 @@ export async function POST(request: Request) {
     }
 
     const prompt = `You are a shopping list assistant. Parse the following voice command: "${transcript}".
-Return a JSON object strictly following this structure (no markdown, just raw JSON):
-{
-  "action": "add" or "remove",
-  "quantity": number,
-  "item": string (the name of the item, cleanly formatted and lowercased),
-  "category": string (e.g. "Dairy", "Produce", "Meat", "Bakery", "Pantry", "Snacks", "Other")
-}
-If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1.`;
+Return a JSON array strictly following this structure (no markdown, just raw JSON array). Split multi-item lists into separate objects:
+[
+  {
+    "action": "add" or "remove",
+    "quantity": number,
+    "item": string (the name of the item, cleanly formatted and lowercased),
+    "category": string (e.g. "Produce", "Dairy", "Meat/Seafood", "Bakery", "Pantry", "Snacks", "Beverages", "Other")
+  }
+]
+If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1. If multiple items are mentioned, return an array of objects for each item.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -160,12 +168,16 @@ If the user says "I need", "buy", "get", treat it as "add". If no quantity is sp
     }
 
     const parsedData = JSON.parse(textResult);
-    parsedData.item = cleanItemName(parsedData.item);
-    if (parsedData.category === 'Uncategorized' || !parsedData.category) {
-      parsedData.category = inferCategory(parsedData.item);
+    const results = Array.isArray(parsedData) ? parsedData : [parsedData];
+    
+    for (const d of results) {
+       d.item = cleanItemName(d.item);
+       if (d.category === 'Uncategorized' || d.category === 'Other' || !d.category) {
+         d.category = inferCategory(d.item);
+       }
     }
     
-    return NextResponse.json(parsedData);
+    return NextResponse.json(results);
     
   } catch (error) {
     console.error('NLP Error:', error);
