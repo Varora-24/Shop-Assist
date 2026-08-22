@@ -25,6 +25,32 @@ function inferCategory(itemName: string): string {
 function cleanItemName(name: string): string {
   let cleanName = name.toLowerCase();
   cleanName = cleanName.replace(/[.,!?]+$/, '').trim();
+  
+  // Centralized filler strip list (applies to front and back)
+  const fillers = [
+    'as well', 'also', 'please', 'some', 'another', 'more', 'a bit of', 'kindly',
+    'i need', 'i want', 'add', 'get me', 'get', 'buy', 'have', 'how about',
+    'can you', 'from my list', 'to my list', 'a', 'an', 'the'
+  ];
+  
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const filler of fillers) {
+      if (cleanName === filler) {
+        return '';
+      }
+      if (cleanName.startsWith(filler + ' ')) {
+        cleanName = cleanName.substring(filler.length).trim();
+        changed = true;
+      }
+      if (cleanName.endsWith(' ' + filler)) {
+        cleanName = cleanName.substring(0, cleanName.length - filler.length).trim();
+        changed = true;
+      }
+    }
+  }
+
   cleanName = cleanName.replace(/^(raw|fresh|frozen|canned)\s+/, '').trim();
   cleanName = cleanName.replace(/^(loaf of|loaves of|piece of|pieces of|bunch of|pack of|packs of)\s+/, '').trim();
   return cleanName;
@@ -33,36 +59,23 @@ function cleanItemName(name: string): string {
 function fallbackRegexParser(text: string) {
   let lowerText = text.toLowerCase();
   
-  const fillers = [
-    "how about a little bit of ", "how about ", 
-    "i would like to have some ", "i would like to have ", 
-    "i would like some ", "i would like ", 
-    "i want to buy some ", "i want to buy ", 
-    "i want some ", "i want ", 
-    "i need to buy some ", "i need to buy ", 
-    "i need some ", "i need ", 
-    "please add some ", "please add ", 
-    "add some ", "add ", 
-    "can you add some ", "can you add ", 
-    "can you get some ", "can you get ", 
-    "get some ", "get ", 
-    "buy some ", "buy ", 
-    "have some ", "have ", 
-    "some "
+  // Meta-speech filter: reject conversational questions or suggestions
+  const metaPatterns = [
+    /^suggest\b/, /^what should\b/, /^help\b/, /\bhelp me\b/
   ];
+  
+  const isPureQuestion = lowerText.includes('?') && !lowerText.includes('add') && !lowerText.includes('buy') && !lowerText.includes('need') && !lowerText.includes('get');
+  const isEmptyHowAbout = (lowerText === 'how about' || lowerText === 'what about');
+  
+  if (metaPatterns.some(pattern => pattern.test(lowerText)) || isPureQuestion || isEmptyHowAbout) {
+    console.log(`Meta-speech detected "${text}", discarding.`);
+    return [];
+  }
   
   let hasActionVerb = false;
   const actionVerbs = ['add', 'need', 'buy', 'get', 'want', 'remove', 'delete'];
   if (actionVerbs.some(verb => lowerText.includes(verb))) {
      hasActionVerb = true;
-  }
-
-  for (const filler of fillers) {
-    if (lowerText.startsWith(filler) || lowerText === filler.trim()) {
-      lowerText = lowerText.substring(filler.length).trim();
-      hasActionVerb = true; // if it had a filler, it implies intent
-      break;
-    }
   }
 
   let isRemove = false;
@@ -74,8 +87,8 @@ function fallbackRegexParser(text: string) {
   let splitText = lowerText
     .replace(/,\s*/g, '|')
     .replace(/\s+and\s+/g, '|')
-    .replace(/\s+also\s+/g, '|')
-    .replace(/\s+as well\s+/g, '|');
+    .replace(/\s+also\b/g, '|')
+    .replace(/\s+as well\b/g, '|');
     
   splitText = splitText.replace(/\|\s*$/g, '');
   
@@ -118,7 +131,7 @@ function fallbackRegexParser(text: string) {
     }
     
     rawItem = rawItem.replace(/^of\s+/, '').trim();
-    let item = cleanItemName(rawItem.replace(/from my list$/g, '').replace(/to my list$/g, ''));
+    let item = cleanItemName(rawItem);
     if (!item) continue;
 
     const cat = inferCategory(item);
