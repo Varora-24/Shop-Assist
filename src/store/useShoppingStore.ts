@@ -8,20 +8,23 @@ export type Item = {
   quantity: number | string;
 };
 
+export type Suggestion = Item & { originalItemId?: string };
+
 type ShoppingState = {
   items: Item[];
   isListening: boolean;
   transcript: string;
   isLoading: boolean;
-  suggestions: Item[];
+  suggestions: Suggestion[];
   
   // Actions
   addItem: (item: Omit<Item, 'id'>) => void;
   removeItem: (id: string) => void;
+  replaceItem: (newItem: Omit<Item, 'id'>, oldItemId: string) => void;
   setIsListening: (isListening: boolean) => void;
   setTranscript: (transcript: string) => void;
   setIsLoading: (isLoading: boolean) => void;
-  setSuggestions: (suggestions: Item[]) => void;
+  setSuggestions: (suggestions: Suggestion[]) => void;
   clearSuggestions: () => void;
   processVoiceCommand: (command: string) => Promise<void>;
 };
@@ -29,9 +32,9 @@ type ShoppingState = {
 const SUBSTITUTES: Record<string, string> = {
   'milk': 'Almond Milk',
   'bread': 'Whole Wheat Bread',
-  'sugar': 'Stevia',
-  'butter': 'Margarine',
-  'eggs': 'Vegan Egg Substitute'
+  'sugar': 'Honey',
+  'chicken': 'Tofu',
+  'butter': 'Olive Oil'
 };
 
 export const useShoppingStore = create<ShoppingState>()(
@@ -43,9 +46,21 @@ export const useShoppingStore = create<ShoppingState>()(
       isLoading: false,
       suggestions: [],
 
+      replaceItem: (newItem, oldItemId) => {
+        set((state) => {
+           const newItems = state.items.filter(i => i.id !== oldItemId);
+           return {
+             items: [...newItems, { ...newItem, id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000) }],
+             suggestions: [] // clear suggestions on action
+           };
+        });
+      },
+
       addItem: (item) => {
         const lowerName = item.name.toLowerCase().trim();
-        let newSuggestions: Item[] = [];
+        let newSuggestions: Suggestion[] = [];
+        
+        const newItemId = Date.now().toString() + '-' + Math.floor(Math.random() * 1000);
         
         for (const [key, substitute] of Object.entries(SUBSTITUTES)) {
           if (lowerName.includes(key)) {
@@ -53,7 +68,8 @@ export const useShoppingStore = create<ShoppingState>()(
               id: Date.now().toString() + '-sub',
               name: substitute,
               category: item.category,
-              quantity: 1
+              quantity: 1,
+              originalItemId: newItemId
             });
           }
         }
@@ -114,7 +130,7 @@ export const useShoppingStore = create<ShoppingState>()(
           }
 
           return {
-            items: [...state.items, { ...item, id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000) }],
+            items: [...state.items, { ...item, id: newItemId }],
             suggestions: newSuggestions.length > 0 ? newSuggestions : state.suggestions
           };
         });

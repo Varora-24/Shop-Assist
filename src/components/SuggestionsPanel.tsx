@@ -4,7 +4,7 @@ import React from 'react';
 import { useShoppingStore } from '@/store/useShoppingStore';
 
 export default function SuggestionsPanel() {
-  const { suggestions, addItem, clearSuggestions } = useShoppingStore();
+  const { suggestions, addItem, replaceItem, clearSuggestions } = useShoppingStore();
 
   if (suggestions.length === 0) return null;
 
@@ -16,16 +16,27 @@ export default function SuggestionsPanel() {
       </div>
       <div className="flex flex-wrap gap-2">
         {suggestions.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => {
-              addItem({ name: item.name, category: item.category, quantity: 1 });
-              clearSuggestions();
-            }}
-            className="text-sm bg-white border border-yellow-200 text-yellow-800 px-3 py-1 rounded-full hover:bg-yellow-100 transition-colors"
-          >
-            + Add {item.name}
-          </button>
+          <div key={item.id} className="flex gap-1 items-center bg-white border border-yellow-200 rounded-full pr-1">
+            <button
+              onClick={() => {
+                addItem({ name: item.name, category: item.category, quantity: 1 });
+                clearSuggestions();
+              }}
+              className="text-sm text-yellow-800 px-3 py-1 rounded-l-full hover:bg-yellow-100 transition-colors border-r border-yellow-200"
+            >
+              + Add {item.name}
+            </button>
+            {item.originalItemId && (
+              <button
+                onClick={() => {
+                  replaceItem({ name: item.name, category: item.category, quantity: 1 }, item.originalItemId!);
+                }}
+                className="text-sm text-yellow-700 px-3 py-1 rounded-r-full hover:bg-yellow-100 transition-colors font-medium"
+              >
+                Replace
+              </button>
+            )}
+          </div>
         ))}
       </div>
     </div>

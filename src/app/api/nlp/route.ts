@@ -26,6 +26,7 @@ function cleanItemName(name: string): string {
   let cleanName = name.toLowerCase();
   cleanName = cleanName.replace(/[.,!?]+$/, '').trim();
   cleanName = cleanName.replace(/^(raw|fresh|frozen|canned)\s+/, '').trim();
+  cleanName = cleanName.replace(/^(loaf of|loaves of|piece of|pieces of|bunch of|pack of|packs of)\s+/, '').trim();
   return cleanName;
 }
 
@@ -81,7 +82,7 @@ function fallbackRegexParser(text: string) {
   const rawItems = splitText.split('|').map(s => s.trim()).filter(Boolean);
   const results = [];
   
-  const units = ['kg', 'grams', 'gram', 'g', 'ml', 'mill', 'l', 'liter', 'litre', 'lbs', 'lb', 'oz', 'dozen', 'packets', 'packet', 'bottles', 'bottle'];
+  const units = ['kg', 'grams', 'gram', 'g', 'ml', 'mill', 'l', 'liter', 'litre', 'lbs', 'lb', 'oz', 'dozen', 'packets', 'packet', 'bottles', 'bottle', 'loaves', 'loaf', 'pieces', 'piece', 'packs', 'pack', 'bunches', 'bunch'];
   units.sort((a, b) => b.length - a.length);
   
   for (let rawItem of rawItems) {
