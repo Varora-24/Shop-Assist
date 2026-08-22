@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { Trash2, ShoppingCart, Tag } from 'lucide-react';
 import { useShoppingStore, Item } from '@/store/useShoppingStore';
 
 export default function ShoppingList() {
@@ -26,21 +27,16 @@ export default function ShoppingList() {
       ) : (
         Object.entries(groupedItems).map(([category, catItems]) => (
           <div key={category} className="space-y-2">
-            <h2 className="text-lg font-semibold text-gray-700 border-b pb-1">{category}</h2>
+            <div className="flex items-center gap-2 mb-3"><Tag className="w-4 h-4 text-indigo-500" /><h2 className="text-md font-bold text-gray-800 tracking-wide uppercase">{category}</h2></div>
             <ul className="space-y-2">
               {catItems.map((item) => {
                 const displayName = item.name.charAt(0).toUpperCase() + item.name.slice(1).toLowerCase();
                 return (
-                  <li key={item.id} className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border border-gray-100">
-                    <span className="font-medium text-gray-800">{displayName}</span>
+                  <li key={item.id} className="group flex justify-between items-center p-4 bg-white rounded-2xl shadow-sm hover:shadow-md border border-gray-100/80 transition-all">
+                    <div className="flex flex-col"><span className="font-semibold text-gray-900 text-lg">{displayName}</span></div>
                     <div className="flex items-center gap-3">
-                      <span className="text-gray-500 text-sm">Qty: {item.quantity}</span>
-                      <button 
-                        onClick={() => removeItem(item.id)}
-                        className="text-red-500 hover:text-red-700 px-2 py-1 bg-red-50 rounded-md text-sm"
-                      >
-                        Remove
-                      </button>
+                      <span className="text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-sm font-medium border border-indigo-100">x {item.quantity}</span>
+                      <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors" aria-label="Remove item"><Trash2 className="w-5 h-5" /></button>
                     </div>
                   </li>
                 );

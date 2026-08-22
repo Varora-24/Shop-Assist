@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Search, Plus } from 'lucide-react';
 import { useShoppingStore } from '@/store/useShoppingStore';
 
 export const MOCK_PRODUCTS = [
@@ -30,14 +31,14 @@ export default function SearchPanel() {
   if (searchResults.length === 0) return null;
 
   return (
-    <div className="max-w-md mx-auto p-4 bg-blue-50 border-b border-blue-100 shadow-inner">
+    <div className="max-w-md mx-auto p-4 bg-white rounded-2xl shadow-sm border border-blue-100 mb-6 overflow-hidden">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-sm font-semibold text-blue-800">Search Results</h3>
-        <button onClick={clearSearchResults} className="text-xs text-blue-600 hover:text-blue-800">Close</button>
+        <div className="flex items-center gap-2"><Search className="w-4 h-4 text-blue-600"/><h3 className="text-sm font-bold text-gray-800">Search Results</h3></div>
+        <button onClick={clearSearchResults} className="text-xs text-gray-400 hover:text-gray-600 bg-gray-50 px-3 py-1 rounded-full font-medium transition-colors">Close</button>
       </div>
       <div className="flex flex-col gap-2">
         {searchResults.map((product: any) => (
-          <div key={product.id} className="flex justify-between items-center bg-white p-2 border border-blue-200 rounded">
+          <div key={product.id} className="flex justify-between items-center p-3 hover:bg-blue-50/50 rounded-xl transition-colors border border-gray-100">
             <div>
               <p className="text-sm font-medium">{product.brand} {product.name}</p>
               <p className="text-xs text-gray-500">${product.price.toFixed(2)} - {product.category}</p>
@@ -47,9 +48,9 @@ export default function SearchPanel() {
                 addItem({ name: `${product.brand} ${product.name}`, category: product.category, quantity: 1 });
                 // Optional: clear on add? Spec says "move it into the list if desired", doesn't explicitly require clearing.
               }}
-              className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded hover:bg-blue-200 transition-colors"
+              className="text-xs bg-blue-600 text-white px-4 py-1.5 rounded-full hover:bg-blue-700 transition-colors shadow-sm font-medium"
             >
-              + Add to list
+              <Plus className="w-3 h-3 inline mr-1"/>Add
             </button>
           </div>
         ))}

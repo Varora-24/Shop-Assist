@@ -1,3 +1,4 @@
+import { ShoppingBag } from 'lucide-react';
 import ShoppingList from '@/components/ShoppingList';
 import VoiceButton from '@/components/VoiceButton';
 import VisualFeedback from '@/components/VisualFeedback';
@@ -7,9 +8,12 @@ import SearchPanel from '@/components/SearchPanel';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gray-50 font-sans">
-      <header className="bg-white shadow-sm p-4 sticky top-0 z-30">
-        <h1 className="text-xl font-bold text-center text-gray-900">Voice Shopping Assistant</h1>
+    <main className="min-h-screen bg-gray-50/50 font-sans pb-24">
+      <header className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg p-5 sticky top-0 z-30">
+        <div className="max-w-md mx-auto flex items-center justify-center gap-2">
+          <ShoppingBag className="w-6 h-6" />
+          <h1 className="text-xl font-bold tracking-tight">ShopAssist</h1>
+        </div>
       </header>
       
       <VisualFeedback />

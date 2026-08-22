@@ -85,10 +85,8 @@ export default function VoiceButton() {
       {error && <div className="mb-2 text-xs text-red-500 bg-red-50 p-1 rounded border border-red-100">{error}</div>}
       <button
         onClick={toggleListening}
-        className={`flex items-center justify-center w-16 h-16 rounded-full shadow-xl transition-all duration-300 ${
-          isListening 
-            ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-            : 'bg-blue-600 hover:bg-blue-700'
+        className={`flex items-center justify-center w-16 h-16 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-500 ${
+          isListening ? 'bg-red-500 hover:bg-red-600 scale-110 shadow-[0_0_40px_rgba(239,68,68,0.6)] animate-[pulse_1.5s_ease-in-out_infinite]' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 hover:shadow-[0_8px_30px_rgb(79,70,229,0.3)]'
         } text-white`}
       >
         {isListening ? <MicOff size={28} /> : <Mic size={28} />}

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
+import { Sparkles, Plus } from 'lucide-react';
 import { useShoppingStore } from '@/store/useShoppingStore';
 
 const SEASONAL_DATA: Record<number, { name: string, category: string }[]> = {
@@ -25,8 +26,8 @@ export default function SeasonalPanel() {
   const seasonalItems = SEASONAL_DATA[currentMonth] || [];
 
   return (
-    <div className="max-w-md mx-auto p-4 bg-green-50 border-b border-green-100 shadow-inner">
-      <h3 className="text-sm font-semibold text-green-800 mb-2">In Season This Month</h3>
+    <div className="max-w-md mx-auto p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-sm border border-green-100 mb-6">
+      <div className="flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4 text-emerald-600"/><h3 className="text-sm font-bold text-emerald-900">In Season This Month</h3></div>
       <div className="flex flex-wrap gap-2">
         {seasonalItems.map((item, idx) => {
           const alreadyAdded = items.some(i => i.name.toLowerCase() === item.name.toLowerCase());
@@ -43,7 +44,7 @@ export default function SeasonalPanel() {
                   : 'bg-white text-green-800 border-green-200 hover:bg-green-100'
               }`}
             >
-              + {item.name}
+              <Plus className="w-3 h-3 inline mr-1"/>{item.name}
             </button>
           );
         })}
