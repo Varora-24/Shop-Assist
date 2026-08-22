@@ -25,6 +25,7 @@ type ShoppingState = {
   suggestions: Suggestion[];
   dismissedSuggestions: string[]; // item names dismissed
   searchResults: any[];
+  language: string;
   
   // Actions
   addItem: (item: Omit<Item, 'id'>) => void;
@@ -38,6 +39,7 @@ type ShoppingState = {
   dismissSuggestion: (suggestionId: string, suggestionName: string) => void;
   setSearchResults: (results: any[]) => void;
   clearSearchResults: () => void;
+  setLanguage: (lang: string) => void;
   processVoiceCommand: (command: string) => Promise<void>;
   checkHistorySuggestions: () => void;
 };
@@ -62,9 +64,11 @@ export const useShoppingStore = create<ShoppingState>()(
       suggestions: [],
       dismissedSuggestions: [],
       searchResults: [],
+      language: 'en-US',
 
       setSearchResults: (results) => set({ searchResults: results }),
       clearSearchResults: () => set({ searchResults: [] }),
+      setLanguage: (lang) => set({ language: lang }),
 
       replaceItem: (newItem, oldItemId) => {
         set((state) => {
@@ -217,7 +221,7 @@ export const useShoppingStore = create<ShoppingState>()(
       },
 
       processVoiceCommand: async (command) => {
-        const { setTranscript, setIsLoading, addItem, removeItem, setSearchResults } = get();
+        const { setTranscript, setIsLoading, addItem, removeItem, setSearchResults, language } = get();
         setTranscript(command);
         setIsLoading(true);
         
@@ -225,7 +229,7 @@ export const useShoppingStore = create<ShoppingState>()(
           const res = await fetch('/api/nlp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ transcript: command })
+            body: JSON.stringify({ transcript: command, language })
           });
           
           if (!res.ok) throw new Error('API Error');

@@ -13,7 +13,7 @@ declare global {
 }
 
 export default function VoiceButton() {
-  const { isListening, setIsListening, setTranscript, processVoiceCommand } = useShoppingStore();
+  const { isListening, setIsListening, setTranscript, processVoiceCommand, language, setLanguage } = useShoppingStore();
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -24,7 +24,7 @@ export default function VoiceButton() {
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = false;
         recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = 'en-US';
+        recognitionRef.current.lang = language;
 
         recognitionRef.current.onresult = (event: any) => {
           let currentTranscript = '';
@@ -52,7 +52,7 @@ export default function VoiceButton() {
         setError('Speech Recognition API not supported in this browser.');
       }
     }
-  }, [setIsListening, setTranscript, processVoiceCommand]);
+  }, [setIsListening, setTranscript, processVoiceCommand, language]);
 
   const toggleListening = () => {
     if (isListening) {
@@ -70,7 +70,18 @@ export default function VoiceButton() {
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+      <div className="bg-white rounded-full px-3 py-1 shadow-md border border-gray-200">
+        <select 
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          className="text-xs bg-transparent outline-none cursor-pointer text-gray-700"
+        >
+          <option value="en-US">English</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="es-ES">Spanish</option>
+        </select>
+      </div>
       {error && <div className="mb-2 text-xs text-red-500 bg-red-50 p-1 rounded border border-red-100">{error}</div>}
       <button
         onClick={toggleListening}

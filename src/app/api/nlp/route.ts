@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  'Produce': ['apple', 'banana', 'mulberry', 'blueberries', 'strawberry', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon', 'lemon', 'chiku'],
+  'Produce': ['apple', 'banana', 'mulberry', 'blueberries', 'strawberry', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon', 'lemon', 'chiku', 'mango', 'berry', 'eggplant', 'pepper'],
   'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer', 'ghee'],
   'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun', 'sourdough', 'pastry', 'pie'],
   'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce', 'vinegar', 'honey', 'lentil', 'oat', 'wheat'],
@@ -116,6 +116,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     transcript = body.transcript;
+    const language = body.language || 'en-US';
     
     if (!transcript) {
       return NextResponse.json({ error: 'No transcript provided' }, { status: 400 });
@@ -146,6 +147,7 @@ export async function POST(request: Request) {
 }
 
 Rules:
+- The following transcript may be in ${language}. Extract the item name translated into English for consistent categorization, but preserve the original spoken quantity/unit logic.
 - If the transcript contains search language ("find", "search for", "show me", "look for"), set intent to "search".
 - If the transcript mentions multiple items (via commas, "and", "also", "as well"), return each as a SEPARATE object in the items array.
 - If the transcript is conversational/meta speech and not a genuine list command (e.g. "suggest something", "can you help me", isolated filler sounds), return intent: "none" and items: [].
