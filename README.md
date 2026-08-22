@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Voice Command Shopping Assistant
 
-## Getting Started
+A minimalist, mobile-first voice command shopping assistant built with Next.js, Tailwind CSS, and Zustand.
 
-First, run the development server:
+## Live Demo
+[Working Application URL] (Add deployment URL here)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Setup Instructions
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Clone the repository
+2. Run `npm install` to install dependencies
+3. (Optional) Create a `.env.local` file and add `GEMINI_API_KEY=your_key` to enable advanced NLP parsing. If omitted, the app will fall back to a robust regex parser ensuring zero external dependency risk.
+4. Run `npm run dev` to start the development server
+5. Open `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Approach (Write-up)
+My approach prioritized core functionality, stability, and mobile-first UX. I chose **Next.js** combined with **Tailwind CSS** for rapid, production-ready UI development and **Zustand** for lightweight state management without prop drilling. 
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To handle voice commands, I integrated the native **Web Speech API** (`SpeechRecognition`), removing the need for heavy third-party audio packages. The speech transcript is sent to a single Next.js API route (`/api/nlp`). This route utilizes the Google Gemini API to intelligently extract intent (add/remove), quantity, and item name. Crucially, I implemented a regex-based fallback parser within the route; if the API key is missing or the network fails, the app still functions flawlessly, adhering to the requirement for resilient code. 
 
-## Learn More
+State is persisted locally using Zustand's `persist` middleware with `localStorage`, satisfying data storage needs without the overhead of a database.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Known Limitations (Future Scope):**
+- **Multilingual Support**: Currently English-only. Future iterations will include i18n scaffolding.
+- **Advanced Suggestions**: Seasonal, shopping-history-based, and price/brand filtering are omitted in this MVP to focus on the core voice-add loop. Currently features static substitute suggestions (e.g., milk -> almond milk).
