@@ -21,5 +21,5 @@ To handle voice commands, I integrated the native **Web Speech API** (`SpeechRec
 State is persisted locally using Zustand's `persist` middleware with `localStorage`, satisfying data storage needs without the overhead of a database.
 
 **Known Limitations (Future Scope):**
-- **Multilingual Support**: Currently English-only. Future iterations will include i18n scaffolding.
-- **Advanced Suggestions**: Seasonal, shopping-history-based, and price/brand filtering are omitted in this MVP to focus on the core voice-add loop. Currently features static substitute suggestions (e.g., milk -> almond milk).
+- **Complex Edge Cases**: Some very complex nested fractions or heavily noisy backgrounds might occasionally confuse the Web Speech API before it hits the NLP layer.
+- All assignment features (Substitutes, Seasonal, History-based recommendations, Search/Filter, Multilingual support) have been successfully completed and implemented.
