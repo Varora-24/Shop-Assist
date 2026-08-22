@@ -5,7 +5,7 @@ export type Item = {
   id: string;
   name: string;
   category: string;
-  quantity: number;
+  quantity: number | string;
 };
 
 type ShoppingState = {
@@ -44,8 +44,7 @@ export const useShoppingStore = create<ShoppingState>()(
       suggestions: [],
 
       addItem: (item) => {
-        // Check for substitutes
-        const lowerName = item.name.toLowerCase();
+        const lowerName = item.name.toLowerCase().trim();
         let newSuggestions: Item[] = [];
         
         for (const [key, substitute] of Object.entries(SUBSTITUTES)) {
@@ -59,10 +58,36 @@ export const useShoppingStore = create<ShoppingState>()(
           }
         }
 
-        set((state) => ({
-          items: [...state.items, { ...item, id: Date.now().toString() }],
-          suggestions: newSuggestions.length > 0 ? newSuggestions : state.suggestions
-        }));
+        set((state) => {
+          const existingIndex = state.items.findIndex(i => i.name.toLowerCase().trim() === lowerName);
+          
+          if (existingIndex !== -1) {
+             const updatedItems = [...state.items];
+             const existingItem = updatedItems[existingIndex];
+             
+             let currentQty = typeof existingItem.quantity === 'number' ? existingItem.quantity : parseFloat(existingItem.quantity.toString()) || 1;
+             let addQty = typeof item.quantity === 'number' ? item.quantity : parseFloat(item.quantity.toString()) || 1;
+             
+             const unitMatch = item.quantity.toString().match(/[a-zA-Z]+/);
+             const oldUnitMatch = existingItem.quantity.toString().match(/[a-zA-Z]+/);
+             const unit = unitMatch ? unitMatch[0] : (oldUnitMatch ? oldUnitMatch[0] : '');
+
+             updatedItems[existingIndex] = {
+                ...existingItem,
+                quantity: unit ? `${currentQty + addQty} ${unit}` : currentQty + addQty
+             };
+             
+             return {
+                items: updatedItems,
+                suggestions: newSuggestions.length > 0 ? newSuggestions : state.suggestions
+             };
+          }
+
+          return {
+            items: [...state.items, { ...item, id: Date.now().toString() }],
+            suggestions: newSuggestions.length > 0 ? newSuggestions : state.suggestions
+          };
+        });
       },
 
       removeItem: (id) =>

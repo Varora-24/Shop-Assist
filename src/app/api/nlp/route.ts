@@ -23,7 +23,6 @@ function inferCategory(itemName: string): string {
 function cleanItemName(name: string): string {
   let cleanName = name.toLowerCase();
   cleanName = cleanName.replace(/[.,!?]+$/, '').trim();
-  // Strip some leftover adjectives just in case they slipped through
   cleanName = cleanName.replace(/^(raw|fresh|frozen|canned)\s+/, '').trim();
   return cleanName;
 }
@@ -62,36 +61,48 @@ function fallbackRegexParser(text: string) {
     lowerText = lowerText.replace(/^(remove|delete)\s+/, '').trim();
   }
 
-  // Replace delimiters with |
   let splitText = lowerText
     .replace(/,\s*/g, '|')
     .replace(/\s+and\s+/g, '|')
     .replace(/\s+also\s+/g, '|')
     .replace(/\s+as well\s+/g, '|');
     
-  // Clean trailing delimiters
   splitText = splitText.replace(/\|\s*$/g, '');
   
   const rawItems = splitText.split('|').map(s => s.trim()).filter(Boolean);
   const results = [];
   
+  const units = ['kg', 'grams', 'gram', 'g', 'ml', 'mill', 'l', 'liter', 'litre', 'lbs', 'lb', 'oz', 'dozen', 'packets', 'packet', 'bottles', 'bottle'];
+  units.sort((a, b) => b.length - a.length);
+  
   for (let rawItem of rawItems) {
-    let quantity = 1;
-    const qtyMatch = rawItem.match(/^(a |an |one |two |three |four |five |six |seven |eight |nine |ten |\d+\s+)/);
+    let numericQty = 1;
+    const qtyMatch = rawItem.match(/^(a |an |one |two |three |four |five |six |seven |eight |nine |ten |\d+(\.\d+)?)/);
     if (qtyMatch) {
-      const qtyStr = qtyMatch[1].trim();
+      const qtyStr = qtyMatch[0].trim();
       const wordToNum: Record<string, number> = {
         'a': 1, 'an': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
         'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
       };
-      quantity = wordToNum[qtyStr] || parseInt(qtyStr, 10);
-      if (isNaN(quantity)) quantity = 1;
+      numericQty = wordToNum[qtyStr] || parseFloat(qtyStr);
+      if (isNaN(numericQty)) numericQty = 1;
       rawItem = rawItem.substring(qtyMatch[0].length).trim();
     }
     
-    // Sometimes raw items start with "of " (e.g. "a little bit of raw chicken")
+    let foundUnit = '';
+    for (const unit of units) {
+       const unitRegex = new RegExp(`^${unit}(?:s)?\\b(?:\\s+of\\b)?\\s*`);
+       const match = rawItem.match(unitRegex);
+       if (match) {
+         foundUnit = unit;
+         rawItem = rawItem.substring(match[0].length).trim();
+         break;
+       }
+    }
+    
     rawItem = rawItem.replace(/^of\s+/, '').trim();
     
+    const quantity = foundUnit ? `${numericQty} ${foundUnit}` : numericQty;
     let item = cleanItemName(rawItem.replace(/from my list$/g, '').replace(/to my list$/g, ''));
     if (!item) continue;
     
@@ -134,12 +145,12 @@ Return a JSON array strictly following this structure (no markdown, just raw JSO
 [
   {
     "action": "add" or "remove",
-    "quantity": number,
-    "item": string (the name of the item, cleanly formatted and lowercased),
+    "quantity": "number or number+unit (e.g., 1, '5 kg', '500 ml', '2 packets')",
+    "item": string (the name of the item WITHOUT the unit, cleanly formatted and lowercased),
     "category": string (e.g. "Produce", "Dairy", "Meat/Seafood", "Bakery", "Pantry", "Snacks", "Beverages", "Other")
   }
 ]
-If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1. If multiple items are mentioned, return an array of objects for each item.`;
+If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1. If multiple items are mentioned, return an array of objects for each item. Extract units (kg, grams, ml, liters, packets, etc.) into the quantity field, NOT the item name.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
