@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  'Produce': ['apple', 'banana', 'mulberry', 'mulberries', 'blueberry', 'blueberries', 'strawberry', 'strawberries', 'chiku', 'chikus', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'pineapples', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon'],
+  'Produce': ['apple', 'banana', 'mulberry', 'mulberries', 'blueberry', 'blueberries', 'strawberry', 'strawberries', 'chiku', 'chikus', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'pineapples', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon', 'lemon', 'lemons'],
   'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer', 'ghee'],
   'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun', 'sourdough', 'pastry', 'pie'],
-  'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce', 'vinegar', 'honey', 'lentil', 'oat'],
+  'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce', 'vinegar', 'honey', 'lentil', 'oat', 'wheat'],
   'Snacks': ['chip', 'cookie', 'cracker', 'popcorn', 'nut', 'chocolate', 'candy'],
   'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb', 'crab'],
   'Beverages': ['water', 'juice', 'soda', 'coffee', 'tea', 'coke', 'pepsi', 'drink'],
@@ -121,11 +121,13 @@ function fallbackRegexParser(text: string) {
     if (!item) continue;
 
     const cat = inferCategory(item);
-
-    // Garbage filter: single word, uncategorized, no action verb in original prompt -> discard
-    const isSingleWord = !item.includes(' ');
-    if (cat === 'Uncategorized' && isSingleWord && !hasActionVerb) {
-       console.log(`Garbage filter triggered for "${item}", skipping.`);
+    
+    // Explicit noise filter (instead of blocking all unknown single words)
+    const noiseWords = ['um', 'uh', 'boom', 'ah', 'like', 'mother', 'showed', 'test', 'testing', 'hello'];
+    const isNoise = noiseWords.includes(item) && !hasActionVerb;
+    
+    if (isNoise || item.length < 2) {
+       console.log(`Garbage filter triggered for noise "${item}", skipping.`);
        continue;
     }
 

@@ -70,11 +70,41 @@ export const useShoppingStore = create<ShoppingState>()(
              
              const unitMatch = item.quantity.toString().match(/[a-zA-Z]+/);
              const oldUnitMatch = existingItem.quantity.toString().match(/[a-zA-Z]+/);
-             const unit = unitMatch ? unitMatch[0] : (oldUnitMatch ? oldUnitMatch[0] : '');
+             let newUnit = unitMatch ? unitMatch[0].toLowerCase() : '';
+             let oldUnit = oldUnitMatch ? oldUnitMatch[0].toLowerCase() : '';
+
+             // Normalize to base units (grams or ml)
+             const isWeight = ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(oldUnit) || ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(newUnit);
+             const isVolume = ['l', 'liter', 'litre', 'ml', 'mill'].includes(oldUnit) || ['l', 'liter', 'litre', 'ml', 'mill'].includes(newUnit);
+
+             if (oldUnit === 'kg' || oldUnit === 'l' || oldUnit === 'liter' || oldUnit === 'litre') currentQty *= 1000;
+             if (newUnit === 'kg' || newUnit === 'l' || newUnit === 'liter' || newUnit === 'litre') addQty *= 1000;
+             
+             let totalQty = currentQty + addQty;
+             let finalUnit = '';
+
+             // Convert back to sensible unit
+             if (isWeight) {
+               if (totalQty >= 1000) {
+                 totalQty = totalQty / 1000;
+                 finalUnit = 'kg';
+               } else {
+                 finalUnit = 'g';
+               }
+             } else if (isVolume) {
+               if (totalQty >= 1000) {
+                 totalQty = totalQty / 1000;
+                 finalUnit = 'l';
+               } else {
+                 finalUnit = 'ml';
+               }
+             } else {
+               finalUnit = newUnit || oldUnit;
+             }
 
              updatedItems[existingIndex] = {
                 ...existingItem,
-                quantity: unit ? `${currentQty + addQty} ${unit}` : currentQty + addQty
+                quantity: finalUnit ? `${totalQty} ${finalUnit}` : totalQty
              };
              
              return {
