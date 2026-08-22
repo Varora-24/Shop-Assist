@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  'Produce': ['apple', 'banana', 'mulberry', 'mulberries', 'blueberry', 'blueberries', 'strawberry', 'strawberries', 'chiku', 'chikus', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon'],
+  'Produce': ['apple', 'banana', 'mulberry', 'mulberries', 'blueberry', 'blueberries', 'strawberry', 'strawberries', 'chiku', 'chikus', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'pineapples', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon'],
   'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer', 'ghee'],
   'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun', 'sourdough', 'pastry', 'pie'],
   'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce', 'vinegar', 'honey', 'lentil', 'oat'],
@@ -15,7 +15,7 @@ const LIQUID_ITEMS = ['juice', 'milk', 'water', 'oil', 'soda', 'coke', 'pepsi', 
 function inferCategory(itemName: string): string {
   const lowerName = itemName.toLowerCase();
   for (const [category, keywords] of Object.entries(CATEGORY_MAP)) {
-    if (keywords.some(kw => lowerName.includes(kw))) {
+    if (keywords.some(kw => lowerName.includes(kw) || kw.includes(lowerName))) {
       return category;
     }
   }
@@ -50,9 +50,16 @@ function fallbackRegexParser(text: string) {
     "some "
   ];
   
+  let hasActionVerb = false;
+  const actionVerbs = ['add', 'need', 'buy', 'get', 'want', 'remove', 'delete'];
+  if (actionVerbs.some(verb => lowerText.includes(verb))) {
+     hasActionVerb = true;
+  }
+
   for (const filler of fillers) {
     if (lowerText.startsWith(filler) || lowerText === filler.trim()) {
       lowerText = lowerText.substring(filler.length).trim();
+      hasActionVerb = true; // if it had a filler, it implies intent
       break;
     }
   }
@@ -103,18 +110,26 @@ function fallbackRegexParser(text: string) {
     }
     
     rawItem = rawItem.replace(/^of\s+/, '').trim();
-    
     let item = cleanItemName(rawItem.replace(/from my list$/g, '').replace(/to my list$/g, ''));
     if (!item) continue;
-    
-    // Semantic validation check for liquids in the fallback parser
-    const isLiquid = LIQUID_ITEMS.some(liq => item.includes(liq));
+
+    const cat = inferCategory(item);
+
+    // Garbage filter: single word, uncategorized, no action verb in original prompt -> discard
+    const isSingleWord = !item.includes(' ');
+    if (cat === 'Uncategorized' && isSingleWord && !hasActionVerb) {
+       console.log(`Garbage filter triggered for "${item}", skipping.`);
+       continue;
+    }
+
+    // Semantic validation check
+    const isLiquid = LIQUID_ITEMS.some(liq => item.includes(liq)) || cat === 'Beverages';
+    const isSolid = cat === 'Meat/Seafood' || cat === 'Produce' || cat === 'Bakery';
+
     if (isLiquid && ['kg', 'grams', 'gram', 'g', 'lbs', 'lb', 'oz'].includes(foundUnit)) {
-       if (foundUnit === 'kg' || foundUnit === 'lbs' || foundUnit === 'lb') {
-          foundUnit = 'l';
-       } else {
-          foundUnit = 'ml';
-       }
+       foundUnit = (foundUnit === 'kg' || foundUnit === 'lbs' || foundUnit === 'lb') ? 'l' : 'ml';
+    } else if (isSolid && ['ml', 'mill', 'l', 'liter', 'litre', 'bottle', 'bottles'].includes(foundUnit)) {
+       foundUnit = (foundUnit === 'l' || foundUnit === 'liter' || foundUnit === 'litre') ? 'kg' : 'grams';
     }
     
     const quantity = foundUnit ? `${numericQty} ${foundUnit}` : numericQty;
@@ -123,16 +138,12 @@ function fallbackRegexParser(text: string) {
       action: isRemove ? 'remove' : 'add',
       quantity,
       item,
-      category: inferCategory(item),
+      category: cat,
     });
   }
 
-  return results.length > 0 ? results : [{
-    action: isRemove ? 'remove' : 'add',
-    quantity: 1,
-    item: cleanItemName(text),
-    category: 'Uncategorized'
-  }];
+  // If nothing survived the filter, we return an empty array to ignore it.
+  return results;
 }
 
 export async function POST(request: Request) {
@@ -150,6 +161,7 @@ export async function POST(request: Request) {
     if (!apiKey) {
       console.log('No GEMINI_API_KEY found. Bypassing LLM, using fallback regex parser.');
       const result = fallbackRegexParser(transcript);
+      if (result.length === 0) return NextResponse.json([]); // Return empty to ignore garbage
       return NextResponse.json(result);
     }
 
@@ -163,7 +175,7 @@ Return a JSON array strictly following this structure (no markdown, just raw JSO
     "category": string (e.g. "Produce", "Dairy", "Meat/Seafood", "Bakery", "Pantry", "Snacks", "Beverages", "Other")
   }
 ]
-If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1. If multiple items are mentioned, return an array of objects for each item. Extract units (kg, grams, ml, liters, packets, etc.) into the quantity field, NOT the item name. IMPORTANT: If the stated unit doesn't logically match the item (e.g., a weight unit like 'grams' or 'kg' for a liquid item like 'juice' or 'milk', or vice versa), correct it to the appropriate unit type for that item.`;
+If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1. If multiple items are mentioned, return an array of objects for each item. Extract units (kg, grams, ml, liters, packets, etc.) into the quantity field, NOT the item name. IMPORTANT: If the stated unit doesn't logically match the item (e.g., a weight unit like 'grams' or 'kg' for a liquid item like 'juice' or 'milk', or vice versa), correct it to the appropriate unit type for that item. If the transcript contains a random single word that is clearly not a food item and has no verb, you MUST ignore it and return an empty array [].`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
