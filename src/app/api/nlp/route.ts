@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  'Produce': ['apple', 'banana', 'mulberry', 'blueberries', 'strawberry', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon', 'lemon', 'chiku', 'mango', 'berry', 'eggplant', 'pepper'],
-  'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer', 'ghee'],
-  'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun', 'sourdough', 'pastry', 'pie'],
-  'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce', 'vinegar', 'honey', 'lentil', 'oat', 'wheat'],
-  'Snacks': ['chip', 'cookie', 'cracker', 'popcorn', 'nut', 'chocolate', 'candy'],
-  'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb', 'crab'],
-  'Beverages': ['water', 'juice', 'soda', 'coffee', 'tea', 'coke', 'pepsi', 'drink'],
+  'Produce': ['apple', 'banana', 'mulberry', 'blueberries', 'strawberry', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon', 'lemon', 'chiku', 'mango', 'berry', 'eggplant', 'pepper', 'cabbage', 'broccoli', 'cauliflower', 'mushroom', 'peas', 'corn', 'cucumber'],
+  'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer', 'ghee', 'curd', 'buttermilk'],
+  'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun', 'sourdough', 'pastry', 'pie', 'cookie', 'biscuit'],
+  'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce', 'vinegar', 'honey', 'lentil', 'oat', 'wheat', 'jam', 'peanut butter', 'mayo', 'ketchup', 'mustard', 'broth', 'soup', 'noodle', 'dal'],
+  'Snacks': ['chip', 'cookie', 'cracker', 'popcorn', 'nut', 'chocolate', 'candy', 'bar', 'pretzel'],
+  'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb', 'crab', 'turkey', 'prawn'],
+  'Beverages': ['water', 'juice', 'soda', 'coffee', 'tea', 'coke', 'pepsi', 'drink', 'beer', 'wine', 'liquor'],
+  'Toiletries': ['toothpaste', 'toothbrush', 'soap', 'shampoo', 'conditioner', 'lotion', 'deodorant', 'razor', 'shave', 'floss', 'mouthwash', 'body wash', 'tissue', 'toilet paper', 'paper towel', 'napkin', 'pad', 'tampon']
 };
 
 const LIQUID_ITEMS = ['juice', 'milk', 'water', 'oil', 'soda', 'coke', 'pepsi', 'tea', 'coffee', 'syrup', 'vinegar', 'sauce'];
@@ -163,7 +164,7 @@ export async function POST(request: Request) {
       "item": string,      // core product name ONLY. Strip ALL numbers, units (kg, g, gram, grams, ml, l, liter, litre, dozen, packet, bottle, count words), and filler/polite words (at, of, another, some, more, a bit of, as well, also, please, extra, additional, i need, i want, can you, kindly) regardless of where they appear in the sentence.
       "quantity": number,  // numeric value only, default 1 if unspecified
       "unit": string|null, // normalized unit if present (kg, g, ml, l, count), null if not applicable
-      "category": string,  // one of: Produce, Dairy, Meat/Seafood, Bakery, Pantry, Beverages, Snacks, Uncategorized
+      "category": string,  // one of: Produce, Dairy, Meat/Seafood, Bakery, Pantry, Beverages, Snacks, Toiletries, Uncategorized
       "maxPrice": number|null, // for search intent: price ceiling if mentioned, else null
       "brand": string|null // for search intent: brand name if mentioned, else null
     }
