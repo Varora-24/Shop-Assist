@@ -31,20 +31,20 @@ function cleanItemName(name: string): string {
   // Strip units
   const units = ['kg', 'grams', 'gram', 'g', 'ml', 'mill', 'l', 'liter', 'litre', 'lbs', 'lb', 'oz', 'dozen', 'packets', 'packet', 'bottles', 'bottle', 'loaves', 'loaf', 'pieces', 'piece', 'packs', 'pack', 'bunches', 'bunch'];
   units.forEach(u => {
-    const reg = new RegExp(`\\\\b${u}s?\\\\b`, 'gi');
+    const reg = new RegExp(`\\b${u}s?\\b`, 'gi');
     cleaned = cleaned.replace(reg, ' ');
   });
   
   // Strip filler words
   const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'how about', 'can you', 'from my list', 'to my list'];
   fillers.forEach(f => {
-    const reg = new RegExp(`\\\\b${f}\\\\b`, 'gi');
+    const reg = new RegExp(`\\b${f}\\b`, 'gi');
     cleaned = cleaned.replace(reg, ' ');
   });
   
-  cleaned = cleaned.replace(/^(raw|fresh|frozen|canned)\\s+/, ' ');
+  cleaned = cleaned.replace(/^(raw|fresh|frozen|canned)\s+/, ' ');
   cleaned = cleaned.replace(/[.,!?]+$/, ' ');
-  return cleaned.replace(/\\s+/g, ' ').trim();
+  return cleaned.replace(/\s+/g, ' ').trim();
 }
 
 function fallbackRegexParser(text: string) {
@@ -52,14 +52,14 @@ function fallbackRegexParser(text: string) {
   
   // Meta-speech filter: reject conversational questions or suggestions
   const metaPatterns = [
-    /^suggest\\b/, /^what should\\b/, /^help\\b/, /\\bhelp me\\b/
+    /^suggest\b/, /^what should\b/, /^help\b/, /\bhelp me\b/
   ];
   
   const isPureQuestion = lowerText.includes('?') && !lowerText.includes('add') && !lowerText.includes('buy') && !lowerText.includes('need') && !lowerText.includes('get');
   const isEmptyHowAbout = (lowerText === 'how about' || lowerText === 'what about');
   
   if (metaPatterns.some(pattern => pattern.test(lowerText)) || isPureQuestion || isEmptyHowAbout) {
-    console.log(`Meta-speech detected "\${text}", discarding.`);
+    console.log(`Meta-speech detected "${text}", discarding.`);
     return [];
   }
   
@@ -75,10 +75,10 @@ function fallbackRegexParser(text: string) {
   }
 
   let splitText = lowerText
-    .replace(/,\\s*/g, '|')
-    .replace(/\\s+and\\s+/g, '|');
+    .replace(/,\s*/g, '|')
+    .replace(/\s+and\s+/g, '|');
     
-  splitText = splitText.replace(/\\|\\s*$/g, '');
+  splitText = splitText.replace(/\|\s*$/g, '');
   const rawItems = splitText.split('|').map(s => s.trim()).filter(Boolean);
   const results = [];
   
@@ -87,7 +87,7 @@ function fallbackRegexParser(text: string) {
   
   for (let rawItem of rawItems) {
     let numericQty = 1;
-    const qtyMatch = rawItem.match(/\\b(\\d+(\\.\\d+)?)\\b/);
+    const qtyMatch = rawItem.match(/\b(\d+(\.\d+)?)\b/);
     if (qtyMatch) {
       numericQty = parseFloat(qtyMatch[1]);
     } else {
@@ -95,7 +95,7 @@ function fallbackRegexParser(text: string) {
         'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
       };
       for (const [w, n] of Object.entries(wordToNum)) {
-        if (new RegExp(`\\\\b${w}\\\\b`, 'i').test(rawItem)) {
+        if (new RegExp(`\\b${w}\\b`, 'i').test(rawItem)) {
           numericQty = n;
           break;
         }
@@ -104,7 +104,7 @@ function fallbackRegexParser(text: string) {
     
     let foundUnit = '';
     for (const unit of units) {
-       if (new RegExp(`\\\\b${unit}s?\\\\b`, 'i').test(rawItem)) {
+       if (new RegExp(`\\b${unit}s?\\b`, 'i').test(rawItem)) {
          foundUnit = unit;
          break;
        }
