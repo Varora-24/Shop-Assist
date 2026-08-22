@@ -31,7 +31,7 @@ export default function SearchPanel() {
   if (searchResults.length === 0) return null;
 
   return (
-    <div className="max-w-md mx-auto p-4 bg-white rounded-2xl shadow-sm border border-blue-100 mb-6 overflow-hidden">
+    <div className="max-w-2xl mx-auto p-4 bg-white rounded-2xl shadow-sm border border-blue-100 mb-6 overflow-hidden">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-2"><Search className="w-4 h-4 text-blue-600"/><h3 className="text-sm font-bold text-gray-800">Search Results</h3></div>
         <button onClick={clearSearchResults} className="text-xs text-gray-400 hover:text-gray-600 bg-gray-50 px-3 py-1 rounded-full font-medium transition-colors">Close</button>

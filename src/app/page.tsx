@@ -8,11 +8,11 @@ import SearchPanel from '@/components/SearchPanel';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gray-50/50 font-sans pb-24">
-      <header className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg p-5 sticky top-0 z-30">
-        <div className="max-w-md mx-auto flex items-center justify-center gap-2">
-          <ShoppingBag className="w-6 h-6" />
-          <h1 className="text-xl font-bold tracking-tight">ShopAssist</h1>
+    <main className="min-h-screen bg-slate-50 font-sans pb-24">
+      <header className="bg-white border-b border-gray-200 text-gray-900 p-4 sticky top-0 z-30">
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
+          <div className="bg-indigo-600 p-2 rounded-xl shadow-sm"><ShoppingBag className="w-5 h-5 text-white" /></div>
+          <h1 className="text-xl font-extrabold tracking-tight">ShopAssist</h1>
         </div>
       </header>
       

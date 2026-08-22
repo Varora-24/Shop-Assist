@@ -26,8 +26,8 @@ export default function SeasonalPanel() {
   const seasonalItems = SEASONAL_DATA[currentMonth] || [];
 
   return (
-    <div className="max-w-md mx-auto p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-sm border border-green-100 mb-6">
-      <div className="flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4 text-emerald-600"/><h3 className="text-sm font-bold text-emerald-900">In Season This Month</h3></div>
+    <div className="max-w-2xl mx-auto px-4 pt-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-2">
+      <div className="flex items-center gap-2 mb-3"><Sparkles className="w-5 h-5 text-indigo-600"/><h3 className="text-sm font-bold text-gray-800">In Season This Month</h3></div>
       <div className="flex flex-wrap gap-2">
         {seasonalItems.map((item, idx) => {
           const alreadyAdded = items.some(i => i.name.toLowerCase() === item.name.toLowerCase());
