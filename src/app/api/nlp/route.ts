@@ -32,6 +32,7 @@ function fallbackRegexParser(text: string) {
   }
   
   let intent = 'add';
+  if (lowerText.includes('find') || lowerText.includes('search') || lowerText.includes('look for')) intent = 'search';
   if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ')) intent = 'remove';
 
   let splitText = lowerText.replace(/,\s*/g, '|').replace(/\s+and\s+/g, '|');
@@ -47,7 +48,7 @@ function fallbackRegexParser(text: string) {
     if (qtyMatch) {
       numericQty = parseFloat(qtyMatch[1]);
     } else {
-      const wordToNum: Record<string, number> = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10};
+      const wordToNum: Record<string, number> = {'half': 0.5, 'a half': 0.5, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10};
       for (const [w, n] of Object.entries(wordToNum)) {
         if (new RegExp(`\\b${w}\\b`, 'i').test(rawItem)) {
           numericQty = n;
@@ -66,9 +67,17 @@ function fallbackRegexParser(text: string) {
     
     // Clean name
     let cleaned = rawItem;
+
+    let maxPrice = null;
+    const priceMatch = rawItem.match(/under \$?(\d+)/);
+    if (priceMatch) {
+       maxPrice = parseFloat(priceMatch[1]);
+       cleaned = cleaned.replace(priceMatch[0], ' ');
+    }
+
     // VERY STRICT strip!
     cleaned = cleaned.replace(/\b\d+(\.\d+)?\b/g, ' '); // numbers
-    const wordNumbers = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+    const wordNumbers = ['a half', 'half', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
     wordNumbers.forEach(w => { cleaned = cleaned.replace(new RegExp(`\\b${w}\\b`, 'gi'), ' '); });
     
     units.forEach(u => { cleaned = cleaned.replace(new RegExp(`\\b${u}s?\\b`, 'gi'), ' '); });
@@ -94,6 +103,8 @@ function fallbackRegexParser(text: string) {
       quantity: numericQty,
       unit: foundUnit,
       category: cat,
+      brand: null,
+      maxPrice: maxPrice
     });
   }
 
@@ -127,12 +138,15 @@ export async function POST(request: Request) {
       "item": string,      // core product name ONLY. Strip ALL numbers, units (kg, g, gram, grams, ml, l, liter, litre, dozen, packet, bottle, count words), and filler/polite words (at, of, another, some, more, a bit of, as well, also, please, extra, additional, i need, i want, can you, kindly) regardless of where they appear in the sentence.
       "quantity": number,  // numeric value only, default 1 if unspecified
       "unit": string|null, // normalized unit if present (kg, g, ml, l, count), null if not applicable
-      "category": string   // one of: Produce, Dairy, Meat/Seafood, Bakery, Pantry, Beverages, Snacks, Uncategorized
+      "category": string,  // one of: Produce, Dairy, Meat/Seafood, Bakery, Pantry, Beverages, Snacks, Uncategorized
+      "maxPrice": number|null, // for search intent: price ceiling if mentioned, else null
+      "brand": string|null // for search intent: brand name if mentioned, else null
     }
   ]
 }
 
 Rules:
+- If the transcript contains search language ("find", "search for", "show me", "look for"), set intent to "search".
 - If the transcript mentions multiple items (via commas, "and", "also", "as well"), return each as a SEPARATE object in the items array.
 - If the transcript is conversational/meta speech and not a genuine list command (e.g. "suggest something", "can you help me", isolated filler sounds), return intent: "none" and items: [].
 - Always return valid JSON, even for noisy or ambiguous input. Never omit a field.

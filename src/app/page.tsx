@@ -3,6 +3,7 @@ import VoiceButton from '@/components/VoiceButton';
 import VisualFeedback from '@/components/VisualFeedback';
 import SuggestionsPanel from '@/components/SuggestionsPanel';
 import SeasonalPanel from '@/components/SeasonalPanel';
+import SearchPanel from '@/components/SearchPanel';
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
       <VisualFeedback />
       
       <div className="pt-24">
+        <SearchPanel />
         <SeasonalPanel />
         <SuggestionsPanel />
         <ShoppingList />

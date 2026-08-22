@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { MOCK_PRODUCTS } from '../components/SearchPanel';
 
 export type Item = {
   id: string;
@@ -23,6 +24,7 @@ type ShoppingState = {
   isLoading: boolean;
   suggestions: Suggestion[];
   dismissedSuggestions: string[]; // item names dismissed
+  searchResults: any[];
   
   // Actions
   addItem: (item: Omit<Item, 'id'>) => void;
@@ -34,6 +36,8 @@ type ShoppingState = {
   setSuggestions: (suggestions: Suggestion[]) => void;
   clearSuggestions: () => void;
   dismissSuggestion: (suggestionId: string, suggestionName: string) => void;
+  setSearchResults: (results: any[]) => void;
+  clearSearchResults: () => void;
   processVoiceCommand: (command: string) => Promise<void>;
   checkHistorySuggestions: () => void;
 };
@@ -57,6 +61,10 @@ export const useShoppingStore = create<ShoppingState>()(
       isLoading: false,
       suggestions: [],
       dismissedSuggestions: [],
+      searchResults: [],
+
+      setSearchResults: (results) => set({ searchResults: results }),
+      clearSearchResults: () => set({ searchResults: [] }),
 
       replaceItem: (newItem, oldItemId) => {
         set((state) => {
@@ -128,6 +136,9 @@ export const useShoppingStore = create<ShoppingState>()(
              } else {
                finalUnit = newUnit || oldUnit;
              }
+
+             // Handle float precision issue
+             totalQty = parseFloat(totalQty.toFixed(3));
 
              updatedItems[existingIndex] = {
                 ...existingItem,
@@ -206,7 +217,7 @@ export const useShoppingStore = create<ShoppingState>()(
       },
 
       processVoiceCommand: async (command) => {
-        const { setTranscript, setIsLoading, addItem, removeItem } = get();
+        const { setTranscript, setIsLoading, addItem, removeItem, setSearchResults } = get();
         setTranscript(command);
         setIsLoading(true);
         
@@ -222,6 +233,22 @@ export const useShoppingStore = create<ShoppingState>()(
           
           if (data.intent === 'none') {
             // do nothing
+          } else if (data.intent === 'search') {
+            const itemData = data.items && data.items[0];
+            if (itemData) {
+               const searchName = itemData.item.toLowerCase();
+               const searchBrand = itemData.brand ? itemData.brand.toLowerCase() : null;
+               const maxPrice = itemData.maxPrice;
+               
+               const filtered = MOCK_PRODUCTS.filter(p => {
+                  let match = true;
+                  if (searchName && !p.name.toLowerCase().includes(searchName)) match = false;
+                  if (searchBrand && !p.brand.toLowerCase().includes(searchBrand)) match = false;
+                  if (maxPrice && p.price > maxPrice) match = false;
+                  return match;
+               });
+               setSearchResults(filtered);
+            }
           } else if (data.intent === 'add') {
             for (const itemData of data.items || []) {
               addItem({
