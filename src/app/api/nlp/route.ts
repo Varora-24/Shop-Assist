@@ -188,17 +188,24 @@ export async function POST(request: Request) {
       return NextResponse.json(result);
     }
 
-    const prompt = `You are a shopping list assistant. Parse the following voice command: "${transcript}".
-Return a JSON array strictly following this structure (no markdown, just raw JSON array). Split multi-item lists into separate objects:
+    const prompt = `You are a shopping list parser. From the user's spoken transcript: "${transcript}", extract:
+- item: the core product name only, with NO filler words, prepositions, quantities, units, or polite phrases (strip words like 'at', 'as well', 'another', 'some', 'please', 'a bit of', etc. regardless of position in the sentence).
+- quantity: numeric value if mentioned, default 1
+- unit: unit of measurement if mentioned (kg, g, ml, l, count), or null
+- category: one of [Produce, Dairy, Meat/Seafood, Bakery, Pantry, Beverages, Snacks, Uncategorized]
+- action: 'add', 'remove', or 'none' (use 'none' for conversational/meta speech that isn't a genuine list command)
+
+Return a JSON array of objects strictly following this structure (no markdown, just raw JSON array). Split multi-item lists into separate objects:
 [
   {
-    "action": "add" or "remove",
+    "action": string,
     "quantity": "number or number+unit (e.g., 1, '5 kg', '500 ml', '2 packets')",
-    "item": string (the name of the item WITHOUT the unit, cleanly formatted and lowercased),
-    "category": string (e.g. "Produce", "Dairy", "Meat/Seafood", "Bakery", "Pantry", "Snacks", "Beverages", "Other")
+    "item": string,
+    "category": string
   }
 ]
-If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1. If multiple items are mentioned, return an array of objects for each item. Extract units (kg, grams, ml, liters, packets, etc.) into the quantity field, NOT the item name. IMPORTANT: If the stated unit doesn't logically match the item (e.g., a weight unit like 'grams' or 'kg' for a liquid item like 'juice' or 'milk', or vice versa), correct it to the appropriate unit type for that item. If the transcript contains a random single word that is clearly not a food item and has no verb, you MUST ignore it and return an empty array [].`;
+
+Always return valid JSON even for imperfect or noisy input. Never include filler words in the item field under any circumstances. IMPORTANT: If the stated unit doesn't logically match the item (e.g., a weight unit like 'grams' or 'kg' for a liquid item like 'juice' or 'milk', or vice versa), correct it to the appropriate unit type for that item.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -228,15 +235,18 @@ If the user says "I need", "buy", "get", treat it as "add". If no quantity is sp
 
     const parsedData = JSON.parse(textResult);
     const results = Array.isArray(parsedData) ? parsedData : [parsedData];
+    const finalResults = [];
     
     for (const d of results) {
+       if (d.action === 'none') continue;
        d.item = cleanItemName(d.item);
        if (d.category === 'Uncategorized' || d.category === 'Other' || !d.category) {
          d.category = inferCategory(d.item);
        }
+       finalResults.push(d);
     }
     
-    return NextResponse.json(results);
+    return NextResponse.json(finalResults);
     
   } catch (error) {
     console.error('NLP Error:', error);
