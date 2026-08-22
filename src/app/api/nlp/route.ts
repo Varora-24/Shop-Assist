@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  'Produce': ['apple', 'banana', 'mulberry', 'blueberry', 'strawberry', 'chiku', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg'],
-  'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer'],
-  'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun'],
-  'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce'],
-  'Snacks': ['chip', 'cookie', 'cracker', 'popcorn', 'nut', 'chocolate'],
-  'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb'],
-  'Beverages': ['water', 'juice', 'soda', 'coffee', 'tea', 'coke', 'pepsi'],
+  'Produce': ['apple', 'banana', 'mulberry', 'mulberries', 'blueberry', 'blueberries', 'strawberry', 'strawberries', 'chiku', 'chikus', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon'],
+  'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer', 'ghee'],
+  'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun', 'sourdough', 'pastry', 'pie'],
+  'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce', 'vinegar', 'honey', 'lentil', 'oat'],
+  'Snacks': ['chip', 'cookie', 'cracker', 'popcorn', 'nut', 'chocolate', 'candy'],
+  'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb', 'crab'],
+  'Beverages': ['water', 'juice', 'soda', 'coffee', 'tea', 'coke', 'pepsi', 'drink'],
 };
+
+const LIQUID_ITEMS = ['juice', 'milk', 'water', 'oil', 'soda', 'coke', 'pepsi', 'tea', 'coffee', 'syrup', 'vinegar', 'sauce'];
 
 function inferCategory(itemName: string): string {
   const lowerName = itemName.toLowerCase();
@@ -102,9 +104,20 @@ function fallbackRegexParser(text: string) {
     
     rawItem = rawItem.replace(/^of\s+/, '').trim();
     
-    const quantity = foundUnit ? `${numericQty} ${foundUnit}` : numericQty;
     let item = cleanItemName(rawItem.replace(/from my list$/g, '').replace(/to my list$/g, ''));
     if (!item) continue;
+    
+    // Semantic validation check for liquids in the fallback parser
+    const isLiquid = LIQUID_ITEMS.some(liq => item.includes(liq));
+    if (isLiquid && ['kg', 'grams', 'gram', 'g', 'lbs', 'lb', 'oz'].includes(foundUnit)) {
+       if (foundUnit === 'kg' || foundUnit === 'lbs' || foundUnit === 'lb') {
+          foundUnit = 'l';
+       } else {
+          foundUnit = 'ml';
+       }
+    }
+    
+    const quantity = foundUnit ? `${numericQty} ${foundUnit}` : numericQty;
     
     results.push({
       action: isRemove ? 'remove' : 'add',
@@ -150,7 +163,7 @@ Return a JSON array strictly following this structure (no markdown, just raw JSO
     "category": string (e.g. "Produce", "Dairy", "Meat/Seafood", "Bakery", "Pantry", "Snacks", "Beverages", "Other")
   }
 ]
-If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1. If multiple items are mentioned, return an array of objects for each item. Extract units (kg, grams, ml, liters, packets, etc.) into the quantity field, NOT the item name.`;
+If the user says "I need", "buy", "get", treat it as "add". If no quantity is specified, use 1. If multiple items are mentioned, return an array of objects for each item. Extract units (kg, grams, ml, liters, packets, etc.) into the quantity field, NOT the item name. IMPORTANT: If the stated unit doesn't logically match the item (e.g., a weight unit like 'grams' or 'kg' for a liquid item like 'juice' or 'milk', or vice versa), correct it to the appropriate unit type for that item.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
