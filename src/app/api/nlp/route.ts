@@ -23,37 +23,28 @@ function inferCategory(itemName: string): string {
 }
 
 function cleanItemName(name: string): string {
-  let cleanName = name.toLowerCase();
-  cleanName = cleanName.replace(/[.,!?]+$/, '').trim();
+  let cleaned = name.toLowerCase();
   
-  // Centralized filler strip list (applies to front and back)
-  const fillers = [
-    'as well', 'also', 'please', 'some', 'another', 'more', 'a bit of', 'kindly',
-    'i need', 'i want', 'add', 'get me', 'get', 'buy', 'have', 'how about',
-    'can you', 'from my list', 'to my list', 'a', 'an', 'the'
-  ];
+  // Strip numbers
+  cleaned = cleaned.replace(/\\d+(\\.\\d+)?/g, ' ');
   
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const filler of fillers) {
-      if (cleanName === filler) {
-        return '';
-      }
-      if (cleanName.startsWith(filler + ' ')) {
-        cleanName = cleanName.substring(filler.length).trim();
-        changed = true;
-      }
-      if (cleanName.endsWith(' ' + filler)) {
-        cleanName = cleanName.substring(0, cleanName.length - filler.length).trim();
-        changed = true;
-      }
-    }
-  }
-
-  cleanName = cleanName.replace(/^(raw|fresh|frozen|canned)\s+/, '').trim();
-  cleanName = cleanName.replace(/^(loaf of|loaves of|piece of|pieces of|bunch of|pack of|packs of)\s+/, '').trim();
-  return cleanName;
+  // Strip units
+  const units = ['kg', 'grams', 'gram', 'g', 'ml', 'mill', 'l', 'liter', 'litre', 'lbs', 'lb', 'oz', 'dozen', 'packets', 'packet', 'bottles', 'bottle', 'loaves', 'loaf', 'pieces', 'piece', 'packs', 'pack', 'bunches', 'bunch'];
+  units.forEach(u => {
+    const reg = new RegExp(`\\\\b${u}s?\\\\b`, 'gi');
+    cleaned = cleaned.replace(reg, ' ');
+  });
+  
+  // Strip filler words
+  const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'how about', 'can you', 'from my list', 'to my list'];
+  fillers.forEach(f => {
+    const reg = new RegExp(`\\\\b${f}\\\\b`, 'gi');
+    cleaned = cleaned.replace(reg, ' ');
+  });
+  
+  cleaned = cleaned.replace(/^(raw|fresh|frozen|canned)\\s+/, ' ');
+  cleaned = cleaned.replace(/[.,!?]+$/, ' ');
+  return cleaned.replace(/\\s+/g, ' ').trim();
 }
 
 function fallbackRegexParser(text: string) {
@@ -61,15 +52,20 @@ function fallbackRegexParser(text: string) {
   
   // Meta-speech filter: reject conversational questions or suggestions
   const metaPatterns = [
-    /^suggest\b/, /^what should\b/, /^help\b/, /\bhelp me\b/
+    /^suggest\\b/, /^what should\\b/, /^help\\b/, /\\bhelp me\\b/
   ];
   
   const isPureQuestion = lowerText.includes('?') && !lowerText.includes('add') && !lowerText.includes('buy') && !lowerText.includes('need') && !lowerText.includes('get');
   const isEmptyHowAbout = (lowerText === 'how about' || lowerText === 'what about');
   
   if (metaPatterns.some(pattern => pattern.test(lowerText)) || isPureQuestion || isEmptyHowAbout) {
-    console.log(`Meta-speech detected "${text}", discarding.`);
+    console.log(`Meta-speech detected "\${text}", discarding.`);
     return [];
+  }
+  
+  let isRemove = false;
+  if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ')) {
+    isRemove = true;
   }
   
   let hasActionVerb = false;
@@ -78,20 +74,11 @@ function fallbackRegexParser(text: string) {
      hasActionVerb = true;
   }
 
-  let isRemove = false;
-  if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ')) {
-    isRemove = true;
-    lowerText = lowerText.replace(/^(remove|delete)\s+/, '').trim();
-  }
-
   let splitText = lowerText
-    .replace(/,\s*/g, '|')
-    .replace(/\s+and\s+/g, '|')
-    .replace(/\s+also\b/g, '|')
-    .replace(/\s+as well\b/g, '|');
+    .replace(/,\\s*/g, '|')
+    .replace(/\\s+and\\s+/g, '|');
     
-  splitText = splitText.replace(/\|\s*$/g, '');
-  
+  splitText = splitText.replace(/\\|\\s*$/g, '');
   const rawItems = splitText.split('|').map(s => s.trim()).filter(Boolean);
   const results = [];
   
@@ -99,38 +86,30 @@ function fallbackRegexParser(text: string) {
   units.sort((a, b) => b.length - a.length);
   
   for (let rawItem of rawItems) {
-    const internalFillers = ["another ", "some ", "a bit of ", "more ", "extra "];
-    for (const filler of internalFillers) {
-      if (rawItem.startsWith(filler)) {
-        rawItem = rawItem.substring(filler.length).trim();
-      }
-    }
-
     let numericQty = 1;
-    const qtyMatch = rawItem.match(/^(a |an |one |two |three |four |five |six |seven |eight |nine |ten |\d+(\.\d+)?)/);
+    const qtyMatch = rawItem.match(/\\b(\\d+(\\.\\d+)?)\\b/);
     if (qtyMatch) {
-      const qtyStr = qtyMatch[0].trim();
+      numericQty = parseFloat(qtyMatch[1]);
+    } else {
       const wordToNum: Record<string, number> = {
-        'a': 1, 'an': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
-        'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
+        'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
       };
-      numericQty = wordToNum[qtyStr] || parseFloat(qtyStr);
-      if (isNaN(numericQty)) numericQty = 1;
-      rawItem = rawItem.substring(qtyMatch[0].length).trim();
+      for (const [w, n] of Object.entries(wordToNum)) {
+        if (new RegExp(`\\\\b${w}\\\\b`, 'i').test(rawItem)) {
+          numericQty = n;
+          break;
+        }
+      }
     }
     
     let foundUnit = '';
     for (const unit of units) {
-       const unitRegex = new RegExp(`^${unit}(?:s)?\\b(?:\\s+of\\b)?\\s*`);
-       const match = rawItem.match(unitRegex);
-       if (match) {
+       if (new RegExp(`\\\\b${unit}s?\\\\b`, 'i').test(rawItem)) {
          foundUnit = unit;
-         rawItem = rawItem.substring(match[0].length).trim();
          break;
        }
     }
     
-    rawItem = rawItem.replace(/^of\s+/, '').trim();
     let item = cleanItemName(rawItem);
     if (!item) continue;
 

@@ -75,7 +75,10 @@ export const useShoppingStore = create<ShoppingState>()(
         }
 
         set((state) => {
-          const existingIndex = state.items.findIndex(i => i.name.toLowerCase().trim() === lowerName);
+          const existingIndex = state.items.findIndex(i => {
+             const iName = i.name.toLowerCase().trim();
+             return iName === lowerName || iName.includes(lowerName) || lowerName.includes(iName);
+          });
           
           if (existingIndex !== -1) {
              const updatedItems = [...state.items];
