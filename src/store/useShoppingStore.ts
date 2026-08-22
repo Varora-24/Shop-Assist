@@ -169,22 +169,24 @@ export const useShoppingStore = create<ShoppingState>()(
           if (!res.ok) throw new Error('API Error');
           const data = await res.json();
           
-          const results = Array.isArray(data) ? data : [data];
-          
-          for (const actionData of results) {
-            if (actionData.action === 'add') {
+          if (data.intent === 'none') {
+            // do nothing
+          } else if (data.intent === 'add') {
+            for (const itemData of data.items || []) {
               addItem({
-                name: actionData.item,
-                category: actionData.category || 'Uncategorized',
-                quantity: actionData.quantity || 1
+                name: itemData.item,
+                category: itemData.category || 'Uncategorized',
+                quantity: itemData.unit ? `${itemData.quantity} ${itemData.unit}` : itemData.quantity
               });
-            } else if (actionData.action === 'remove') {
-              const currentItems = get().items;
-              const itemToRemove = currentItems.find(i => i.name.toLowerCase().includes(actionData.item.toLowerCase()));
+            }
+          } else if (data.intent === 'remove') {
+            const currentItems = get().items;
+            for (const itemData of data.items || []) {
+              const itemToRemove = currentItems.find(i => i.name.toLowerCase().includes(itemData.item.toLowerCase()));
               if (itemToRemove) {
                 removeItem(itemToRemove.id);
               } else {
-                console.warn('Item not found to remove:', actionData.item);
+                console.warn('Item not found to remove:', itemData.item);
               }
             }
           }
