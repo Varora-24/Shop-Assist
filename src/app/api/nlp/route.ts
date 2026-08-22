@@ -60,7 +60,9 @@ function fallbackRegexParser(text: string) {
   if (lowerText.includes('find') || lowerText.includes('search') || lowerText.includes('look for')) intent = 'search';
   if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ')) intent = 'remove';
 
-  let splitText = lowerText.replace(/,\s*/g, '|').replace(/\s+and\s+/g, '|');
+  let splitText = lowerText.replace(/,\s*/g, '|').replace(/\s+and\s+/g, '|').replace(/\s+also\s+/g, '|').replace(/\s+plus\s+/g, '|');
+    // Split on numbers that aren't part of a word (e.g. '2 apples 3 bananas' -> '2 apples | 3 bananas')
+    splitText = splitText.replace(/\s+(?=(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b)/g, '|');
   const rawItems = splitText.split('|').map(s => s.trim()).filter(Boolean);
   const items = [];
   
