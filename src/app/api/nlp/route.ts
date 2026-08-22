@@ -85,6 +85,13 @@ function fallbackRegexParser(text: string) {
   units.sort((a, b) => b.length - a.length);
   
   for (let rawItem of rawItems) {
+    const internalFillers = ["another ", "some ", "a bit of ", "more ", "extra "];
+    for (const filler of internalFillers) {
+      if (rawItem.startsWith(filler)) {
+        rawItem = rawItem.substring(filler.length).trim();
+      }
+    }
+
     let numericQty = 1;
     const qtyMatch = rawItem.match(/^(a |an |one |two |three |four |five |six |seven |eight |nine |ten |\d+(\.\d+)?)/);
     if (qtyMatch) {

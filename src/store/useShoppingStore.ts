@@ -84,7 +84,7 @@ export const useShoppingStore = create<ShoppingState>()(
           }
 
           return {
-            items: [...state.items, { ...item, id: Date.now().toString() }],
+            items: [...state.items, { ...item, id: Date.now().toString() + '-' + Math.floor(Math.random() * 1000) }],
             suggestions: newSuggestions.length > 0 ? newSuggestions : state.suggestions
           };
         });
