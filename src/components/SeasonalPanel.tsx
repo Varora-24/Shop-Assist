@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Sparkles, Plus } from 'lucide-react';
-import { useShoppingStore } from '@/store/useShoppingStore';
+import { useShoppingStore, matchExistingItem } from '@/store/useShoppingStore';
 
 const SEASONAL_DATA: Record<number, { name: string, category: string }[]> = {
   0: [{ name: 'Grapefruit', category: 'Produce' }, { name: 'Kale', category: 'Produce' }, { name: 'Leeks', category: 'Produce' }, { name: 'Brussels Sprouts', category: 'Produce' }],
@@ -30,7 +30,7 @@ export default function SeasonalPanel() {
       <div className="flex items-center gap-2 mb-3"><Sparkles className="w-5 h-5 text-indigo-600"/><h3 className="text-sm font-bold text-gray-800">In Season This Month</h3></div>
       <div className="flex flex-wrap gap-2">
         {seasonalItems.map((item, idx) => {
-          const alreadyAdded = items.some(i => i.name.toLowerCase() === item.name.toLowerCase());
+          const alreadyAdded = !!matchExistingItem(item.name, items);
           return (
             <button
               key={idx}
