@@ -57,7 +57,7 @@ export function fallbackRegexParser(text: string) {
   }
   
   let intent = 'add';
-  if (lowerText.includes('find') || lowerText.includes('search') || lowerText.includes('look for')) intent = 'search';
+  if (lowerText.includes('find') || lowerText.includes('search') || lowerText.includes('look for') || lowerText.includes('show me') || /\b(cheap|expensive|premium|budget|organic|basic)\b/.test(lowerText)) intent = 'search';
   if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ') || lowerText.startsWith('take off ')) intent = 'remove';
     if (lowerText.includes('clear list') || lowerText.includes('empty list') || lowerText === 'clear') return { intent: 'clear', items: [] };
     if (lowerText.startsWith('update ') || lowerText.startsWith('change ') || lowerText.includes(' quantity')) intent = 'update';
@@ -75,7 +75,7 @@ export function fallbackRegexParser(text: string) {
   
   for (let rawItem of rawItems) {
     let numericQty = null;
-    const qtyMatch = rawItem.match(/\b(\d+(\.\d+)?)\b/);
+    const qtyMatch = rawItem.match(/\b(\d+(\.\d+)?)\s*([a-zA-Z]+)?\b/);
     if (qtyMatch) {
       numericQty = parseFloat(qtyMatch[1]);
     } else {
@@ -90,12 +90,8 @@ export function fallbackRegexParser(text: string) {
     
     if (numericQty === null && (intent === 'add' || intent === 'update')) { numericQty = 1; }
     let foundUnit = null;
-    for (const unit of units) {
-       if (new RegExp(`\\b${unit}s?\\b`, 'i').test(rawItem)) {
-         foundUnit = unit;
-         break;
-       }
-    }
+    const qm = rawItem.match(/\b(\d+(\.\d+)?)\s*([a-zA-Z]+)?\b/);
+    if (qm && qm[3] && units.includes(qm[3].toLowerCase())) { foundUnit = qm[3].toLowerCase(); } else { for (const unit of units) { if (new RegExp(`(?:\\b|\\d)\\s*\${unit}s?\\b`, 'i').test(rawItem)) { foundUnit = unit; break; } } }
     
     // Clean name
     let cleaned = rawItem;
@@ -108,12 +104,12 @@ export function fallbackRegexParser(text: string) {
     }
 
     // VERY STRICT strip!
-    cleaned = cleaned.replace(/\b\d+(\.\d+)?\b/g, ' '); // numbers
+    cleaned = cleaned.replace(/\b\d+(\.\d+)?\s*[a-zA-Z]*\b/g, ' ');
     const wordNumbers = ['a half', 'half', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
     wordNumbers.forEach(w => { cleaned = cleaned.replace(new RegExp(`\\b${w}\\b`, 'gi'), ' '); });
     
     units.forEach(u => { cleaned = cleaned.replace(new RegExp(`\\b${u}s?\\b`, 'gi'), ' '); });
-    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me', 'from', 'my', 'list', 'cart', 'remove', 'delete', 'take off', 'get rid of', 'change', 'quantity', 'update', 'set', 'to'];
+    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me', 'from', 'my', 'list', 'cart', 'remove', 'delete', 'take off', 'get rid of', 'change', 'quantity', 'update', 'set', 'to', 'and'];
     fillers.forEach(f => { cleaned = cleaned.replace(new RegExp(`\\b${f}\\b`, 'gi'), ' '); });
     
     cleaned = cleaned.replace(/^(raw|fresh|frozen|canned)\s+/, ' ');
@@ -189,7 +185,7 @@ export async function POST(request: Request) {
 
 Rules:
 - The following transcript may be in ${language}. Extract the item name translated into English for consistent categorization, but preserve the original spoken quantity/unit logic.
-- If the transcript contains search language ("find", "search for", "show me", "look for"), set intent to "search".
+- If the transcript contains search language ("find", "search for", "show me", "look for") OR tier/quality adjectives ("cheap", "expensive", "premium", "budget", "organic", "basic"), set intent to "search".
   - If the transcript asks to clear or empty the entire list, return intent: "clear" and items: [].
   - If the transcript asks to change or update the quantity of an existing item, set intent to "update".
 - If the transcript mentions multiple items (via commas, "and", "also", "as well"), return each as a SEPARATE object in the items array.

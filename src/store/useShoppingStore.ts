@@ -71,10 +71,22 @@ export function normalizeQuantity(qty1: number | string, qty2: number | string, 
   const u1Match = qty1?.toString().match(/[a-zA-Z]+/);
   const u2Match = qty2?.toString().match(/[a-zA-Z]+/);
   const u1 = u1Match ? u1Match[0].toLowerCase() : '';
-  const u2 = u2Match ? u2Match[0].toLowerCase() : (u1 || '');
+  const u2Raw = u2Match ? u2Match[0].toLowerCase() : '';
+  const u2 = u2Raw || (u1 || ''); // if missing, assume same unit to try to merge cleanly
 
-  const isWeight = ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(u1) || ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(u2);
-  const isVolume = ['l', 'liter', 'litre', 'ml', 'mill'].includes(u1) || ['l', 'liter', 'litre', 'ml', 'mill'].includes(u2);
+  const weightUnits = ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'];
+  const volumeUnits = ['l', 'liter', 'litre', 'ml', 'mill'];
+  const countUnits = ['dozen', 'piece', 'pieces', 'pack', 'packs', 'packet', 'packets', 'bunch', 'bunches', 'bottle', 'bottles', 'loaf', 'loaves'];
+  
+  const fam1 = weightUnits.includes(u1) ? 'weight' : (volumeUnits.includes(u1) ? 'volume' : (countUnits.includes(u1) || !u1 ? 'count' : 'unknown'));
+  const fam2 = weightUnits.includes(u2Raw) ? 'weight' : (volumeUnits.includes(u2Raw) ? 'volume' : (countUnits.includes(u2Raw) || !u2Raw ? 'count' : 'unknown'));
+
+  if (fam1 !== fam2 && u2Raw !== '') {
+     return { conflict: true, value: q2, unit: u2Raw, str: u2Raw ? `${q2} ${u2Raw}` : q2 };
+  }
+
+  const isWeight = fam1 === 'weight' || fam2 === 'weight';
+  const isVolume = fam1 === 'volume' || fam2 === 'volume';
 
   if (['kg', 'l', 'liter', 'litre'].includes(u1)) q1 *= 1000;
   if (['kg', 'l', 'liter', 'litre'].includes(u2)) q2 *= 1000;
@@ -101,7 +113,7 @@ export function normalizeQuantity(qty1: number | string, qty2: number | string, 
   }
 
   totalQty = parseFloat(totalQty.toFixed(3));
-  return { value: totalQty, unit: finalUnit, str: finalUnit ? `${totalQty} ${finalUnit}` : totalQty };
+  return { conflict: false, value: totalQty, unit: finalUnit, str: finalUnit ? `${totalQty} ${finalUnit}` : totalQty };
 }
 
 export function matchExistingItem(spokenName: string, list: Item[]): Item | null {
@@ -195,16 +207,26 @@ export const useShoppingStore = create<ShoppingState>()(
              const existingIndex = state.items.findIndex(i => i.id === existingItem.id);
              
              const merged = normalizeQuantity(existingItem.quantity, item.quantity, false);
-             console.log(`MERGE MATH [ADD]: Existing (${existingItem.quantity}) + Incoming (${item.quantity}) = ${merged.str}`);
-             updatedItems[existingIndex] = {
-                ...existingItem,
-                quantity: merged.str
-             };
-             
-             return {
-                items: updatedItems,
-                suggestions: [...state.suggestions, ...newSuggestions]
-             };
+             if (merged.conflict) {
+               console.warn(`MERGE CONFLICT [ADD]: ${existingItem.quantity} vs ${item.quantity}. Adding as separate item.`);
+               const newHistory = state.history.filter(h => h.name.toLowerCase() !== lowerName);
+               return {
+                 items: [...state.items, { ...item, id: newItemId }],
+                 history: newHistory,
+                 suggestions: [...state.suggestions, ...newSuggestions]
+               };
+             } else {
+               console.log(`MERGE MATH [ADD]: Existing (${existingItem.quantity}) + Incoming (${item.quantity}) = ${merged.str}`);
+               updatedItems[existingIndex] = {
+                  ...existingItem,
+                  quantity: merged.str
+               };
+               
+               return {
+                  items: updatedItems,
+                  suggestions: [...state.suggestions, ...newSuggestions]
+               };
+             }
           }
 
           const newHistory = state.history.filter(h => h.name.toLowerCase() !== lowerName);
