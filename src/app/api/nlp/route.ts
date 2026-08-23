@@ -47,6 +47,22 @@ function translateText(text: string) {
   return translated.replace(/\s+/g, ' ').trim();
 }
 
+
+function isItemValid(itemStr: string): boolean {
+  if (!itemStr || itemStr.length < 2) return false;
+  const lower = itemStr.toLowerCase().trim();
+  const exactAbsurd = ['to', 'for', 'some', 'and', 'sorry', 'no', 'just', 'read', 'baby', 'full stop', 'comma', 'adam bust', 'inr1000'];
+  if (exactAbsurd.includes(lower)) return false;
+  
+  if (lower.includes('shop assist') || lower.includes('comma') || lower.includes('full stop')) return false;
+  if (itemStr.includes('*')) return false; // ban censored words
+  
+  const isAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro', 'leg', 'legs', 'hand', 'hands', 'arm', 'arms', 'head', 'foot', 'feet', 'finger', 'toe', 'eye', 'ear', 'nose', 'mouth', 'vehicle', 'car', 'truck', 'bike', 'motorcycle', 'boat', 'airplane', 'aircraft'].some(k => lower.includes(k) || lower === k);
+  if (isAdversarial) return false;
+  
+  return true;
+}
+
 export function fallbackRegexParser(text: string) {
   text = translateText(text);
   let lowerText = text.toLowerCase();
@@ -137,15 +153,7 @@ export function fallbackRegexParser(text: string) {
     });
   }
 
-  const validItems = items.filter(i => i.item.length >= 2 && i.item !== 'to' && i.item !== 'for' && i.item !== 'some');
-  const filteredItems = validItems.filter(i => {
-    // Check adversarial words
-    const lower = i.item.toLowerCase();
-    const isAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro', 'leg', 'legs', 'hand', 'hands', 'arm', 'arms', 'head', 'foot', 'feet', 'finger', 'toe', 'eye', 'ear', 'nose', 'mouth', 'vehicle', 'car', 'truck', 'bike', 'motorcycle', 'boat', 'airplane', 'aircraft'].some(k => lower.includes(k));
-    if (isAdversarial) return false;
-    
-    return true;
-  });
+  const filteredItems = items.filter(i => isItemValid(i.item));
   return { intent: filteredItems.length > 0 ? intent : "none", items: filteredItems };
 }
 
@@ -225,6 +233,14 @@ Transcript: "${transcript}"`;
     if (parsedData.intent === 'none' || !parsedData.items) {
       return NextResponse.json({ intent: 'none', items: [] });
     }
+
+    // Validate Gemini Output
+    parsedData.items = parsedData.items.filter((i: any) => isItemValid(i.item));
+    if (parsedData.items.length === 0) parsedData.intent = 'none';
+
+    // Validate Gemini Output
+    parsedData.items = parsedData.items.filter((i: any) => isItemValid(i.item));
+    if (parsedData.items.length === 0) parsedData.intent = 'none';
     
     // Categorize fallback if LLM missed it
     parsedData.items.forEach((item: any) => {

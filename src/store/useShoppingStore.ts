@@ -104,12 +104,27 @@ export function normalizeQuantity(qty1: number | string, qty2: number | string, 
     finalUnit = u2 || u1;
   }
 
-  if (totalQty > 1000 && !isWeight && !isVolume) {
-     console.warn(`Quantity sanity ceiling hit: computed ${totalQty} ${finalUnit}. Capping at 1000.`);
-     totalQty = 1000;
-  } else if ((isWeight || isVolume) && totalQty > 100) {
-     console.warn(`Quantity sanity ceiling hit: computed ${totalQty} ${finalUnit}. Capping at 100.`);
-     totalQty = 100;
+  if (!isWeight && !isVolume) {
+     if (totalQty > 1000) {
+       console.warn(`Quantity sanity ceiling hit: computed ${totalQty} ${finalUnit}. Capping at 1000.`);
+       totalQty = 1000;
+     }
+  } else if (isWeight) {
+     if (finalUnit === 'kg' && totalQty > 100) {
+       console.warn(`Quantity sanity ceiling hit: computed ${totalQty} kg. Capping at 100 kg.`);
+       totalQty = 100;
+     } else if (finalUnit === 'g' && totalQty > 100000) {
+       console.warn(`Quantity sanity ceiling hit: computed ${totalQty} g. Capping at 100000 g.`);
+       totalQty = 100000;
+     }
+  } else if (isVolume) {
+     if (finalUnit === 'l' && totalQty > 100) {
+       console.warn(`Quantity sanity ceiling hit: computed ${totalQty} L. Capping at 100 L.`);
+       totalQty = 100;
+     } else if (finalUnit === 'ml' && totalQty > 100000) {
+       console.warn(`Quantity sanity ceiling hit: computed ${totalQty} ml. Capping at 100000 ml.`);
+       totalQty = 100000;
+     }
   }
 
   totalQty = parseFloat(totalQty.toFixed(3));
