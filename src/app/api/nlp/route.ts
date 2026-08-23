@@ -11,7 +11,7 @@ const CATEGORY_MAP: Record<string, string[]> = {
   'Toiletries': ['toothpaste', 'toothbrush', 'soap', 'shampoo', 'conditioner', 'lotion', 'deodorant', 'razor', 'shave', 'floss', 'mouthwash', 'body wash', 'tissue', 'toilet paper', 'paper towel', 'napkin', 'pad', 'tampon']
 };
 
-const LIQUID_ITEMS = ['juice', 'milk', 'water', 'oil', 'soda', 'coke', 'pepsi', 'tea', 'coffee', 'syrup', 'vinegar', 'sauce'];
+const LIQUID_ITEMS = ['juice', 'lemon juice', 'milk', 'water', 'oil', 'soda', 'coke', 'pepsi', 'tea', 'coffee', 'syrup', 'vinegar', 'sauce'];
 
 function inferCategory(itemName: string): string {
   const lowerName = itemName.toLowerCase();
@@ -31,22 +31,22 @@ const DICTIONARY: Record<string, string> = {
   'सेब': 'apple', 'आलू': 'potato', 'बैगन': 'eggplant', 'दूध': 'milk', 'पानी': 'water', 'रोटी': 'bread', 'चीनी': 'sugar', 'चिकन': 'chicken', 'अंडा': 'egg', 'अंडे': 'egg', 'प्याज': 'onion', 'टमाटर': 'tomato', 'केला': 'banana', 'और': 'and', 'भी': 'also',
   
   // Spanish
-  'uno': 'one', 'dos': 'two', 'tres': 'three', 'cuatro': 'four', 'cinco': 'five', 'seis': 'seis', 'siete': 'seven', 'ocho': 'eight', 'nueve': 'nine', 'diez': 'ten',
+  'uno': 'one', 'un': 'one', 'de': ' ', 'dos': 'two', 'tres': 'three', 'cuatro': 'four', 'cinco': 'five', 'seis': 'seis', 'siete': 'seven', 'ocho': 'eight', 'nueve': 'nine', 'diez': 'ten',
   'kilo': 'kg', 'gramos': 'grams', 'litro': 'liter', 'litros': 'liter', 'docena': 'dozen',
-  'manzana': 'apple', 'papa': 'potato', 'patata': 'potato', 'berenjena': 'eggplant', 'leche': 'milk', 'agua': 'water', 'pan': 'bread', 'azúcar': 'sugar', 'pollo': 'chicken', 'huevo': 'egg', 'cebolla': 'onion', 'tomate': 'tomato', 'plátano': 'banana', 'y': 'and', 'también': 'also'
+  'manzana': 'apple', 'manzanas': 'apple', 'papa': 'potato', 'patata': 'potato', 'berenjena': 'eggplant', 'leche': 'milk', 'agua': 'water', 'pan': 'bread', 'azúcar': 'sugar', 'pollo': 'chicken', 'huevo': 'egg', 'cebolla': 'onion', 'tomate': 'tomato', 'plátano': 'banana', 'y': 'and', 'también': 'also'
 };
 
 function translateText(text: string) {
   let translated = text;
   // Replace punctuation
-  translated = translated.replace(/[।.,!?]/g, ' ');
+  translated = translated.replace(/[।.!?]/g, ' ');
   for (const [word, trans] of Object.entries(DICTIONARY)) {
     translated = translated.replace(new RegExp(`(?:\\b|^|\\s)${word}(?:\\b|$|\\s)`, 'gi'), ` ${trans} `);
   }
   return translated.replace(/\s+/g, ' ').trim();
 }
 
-function fallbackRegexParser(text: string) {
+export function fallbackRegexParser(text: string) {
   text = translateText(text);
   let lowerText = text.toLowerCase();
   const metaPatterns = [/^suggest\b/, /^what should\b/, /^help\b/, /\bhelp me\b/];
@@ -121,7 +121,7 @@ function fallbackRegexParser(text: string) {
     
     if (['kg','grams','gram','g','lbs','lb','oz'].includes(foundUnit || '') && (LIQUID_ITEMS.some(liq => cleaned.includes(liq)) || cat === 'Beverages')) {
        foundUnit = (foundUnit === 'kg' || foundUnit === 'lbs') ? 'l' : 'ml';
-    } else if (['ml','mill','l','liter','litre','bottle','bottles'].includes(foundUnit || '') && (cat === 'Meat/Seafood' || cat === 'Produce' || cat === 'Bakery')) {
+    } else if (['ml','mill','l','liter','litre','bottle','bottles'].includes(foundUnit || '') && (cat === 'Meat/Seafood' || cat === 'Produce' || cat === 'Bakery') && !LIQUID_ITEMS.some(liq => cleaned.includes(liq))) {
        foundUnit = (foundUnit === 'l' || foundUnit === 'liter') ? 'kg' : 'grams';
     }
     
