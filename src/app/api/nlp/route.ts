@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  'Produce': ['apple', 'banana', 'mulberry', 'blueberries', 'strawberry', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon', 'lemon', 'chiku', 'mango', 'berry', 'eggplant', 'pepper', 'cabbage', 'broccoli', 'cauliflower', 'mushroom', 'peas', 'corn', 'cucumber'],
+  'Produce': ['apple', 'banana', 'mulberry', 'blueberries', 'strawberry', 'strawberries', 'orange', 'grape', 'carrot', 'onion', 'garlic', 'pineapple', 'potato', 'tomato', 'fruit', 'veg', 'spinach', 'lettuce', 'melon', 'lemon', 'chiku', 'mango', 'berry', 'eggplant', 'pepper', 'cabbage', 'broccoli', 'cauliflower', 'mushroom', 'peas', 'corn', 'cucumber'],
   'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream', 'paneer', 'ghee', 'curd', 'buttermilk'],
   'Bakery': ['bread', 'bagel', 'croissant', 'muffin', 'cake', 'bun', 'sourdough', 'pastry', 'pie', 'cookie', 'biscuit'],
   'Pantry': ['rice', 'pasta', 'flour', 'sugar', 'salt', 'oil', 'cereal', 'bean', 'spice', 'sauce', 'vinegar', 'honey', 'lentil', 'oat', 'wheat', 'jam', 'peanut butter', 'mayo', 'ketchup', 'mustard', 'broth', 'soup', 'noodle', 'dal'],
   'Snacks': ['chip', 'cookie', 'cracker', 'popcorn', 'nut', 'chocolate', 'candy', 'bar', 'pretzel'],
-  'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb', 'crab', 'turkey', 'prawn'],
+  'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb', 'crab', 'turkey', 'prawn', 'tofu', 'paneer', 'tempeh'],
   'Beverages': ['water', 'juice', 'soda', 'coffee', 'tea', 'coke', 'pepsi', 'drink', 'beer', 'wine', 'liquor'],
   'Toiletries': ['toothpaste', 'toothbrush', 'soap', 'shampoo', 'conditioner', 'lotion', 'deodorant', 'razor', 'shave', 'floss', 'mouthwash', 'body wash', 'tissue', 'toilet paper', 'paper towel', 'napkin', 'pad', 'tampon']
 };
@@ -108,7 +108,7 @@ export function fallbackRegexParser(text: string) {
     wordNumbers.forEach(w => { cleaned = cleaned.replace(new RegExp(`\\b${w}\\b`, 'gi'), ' '); });
     
     units.forEach(u => { cleaned = cleaned.replace(new RegExp(`\\b${u}s?\\b`, 'gi'), ' '); });
-    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the'];
+    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me'];
     fillers.forEach(f => { cleaned = cleaned.replace(new RegExp(`\\b${f}\\b`, 'gi'), ' '); });
     
     cleaned = cleaned.replace(/^(raw|fresh|frozen|canned)\s+/, ' ');
