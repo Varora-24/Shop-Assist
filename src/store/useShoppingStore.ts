@@ -309,7 +309,7 @@ export const useShoppingStore = create<ShoppingState>()(
               const itemToUpdate = matchExistingItem(itemData.item, currentItems);
               if (itemToUpdate) {
                 const qtyStr = itemData.unit ? `${itemData.quantity} ${itemData.unit}` : itemData.quantity;
-                get().replaceItem({ ...itemToUpdate, quantity: qtyStr }, itemToUpdate.id);
+                set((state) => ({ items: state.items.map(i => i.id === itemToUpdate.id ? { ...i, quantity: qtyStr } : i) }));
                 addToast(`Updated ${itemToUpdate.name} to ${qtyStr}`, 'success');
               } else {
                 addToast(`Couldn't find ${itemData.item} in your list`, 'error');
@@ -320,8 +320,49 @@ export const useShoppingStore = create<ShoppingState>()(
             for (const itemData of data.items || []) {
               const itemToRemove = matchExistingItem(itemData.item, currentItems);
               if (itemToRemove) {
-                removeItem(itemToRemove.id);
-                addToast(`Removed ${itemToRemove.name}`, 'success');
+                if (itemData.quantity === null) {
+                  removeItem(itemToRemove.id);
+                  addToast(`Removed ${itemToRemove.name}`, 'success');
+                } else {
+                  // Partial removal
+                  let currentQty = typeof itemToRemove.quantity === 'number' ? itemToRemove.quantity : parseFloat(itemToRemove.quantity.toString()) || 1;
+                  let removeQty = typeof itemData.quantity === 'number' ? itemData.quantity : parseFloat(itemData.quantity?.toString()) || 1;
+                  
+                  const oldUnitMatch = itemToRemove.quantity.toString().match(/[a-zA-Z]+/);
+                  const newUnitMatch = (itemData.unit || '').match(/[a-zA-Z]+/);
+                  let oldUnit = oldUnitMatch ? oldUnitMatch[0].toLowerCase() : '';
+                  let newUnit = newUnitMatch ? newUnitMatch[0].toLowerCase() : (oldUnit || '');
+
+                  const isWeight = ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(oldUnit) || ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(newUnit);
+                  const isVolume = ['l', 'liter', 'litre', 'ml', 'mill'].includes(oldUnit) || ['l', 'liter', 'litre', 'ml', 'mill'].includes(newUnit);
+
+                  if (oldUnit === 'kg' || oldUnit === 'l' || oldUnit === 'liter' || oldUnit === 'litre') currentQty *= 1000;
+                  if (newUnit === 'kg' || newUnit === 'l' || newUnit === 'liter' || newUnit === 'litre') removeQty *= 1000;
+                  
+                  let totalQty = currentQty - removeQty;
+                  let finalUnit = '';
+
+                  if (isWeight) {
+                    if (totalQty >= 1000) { totalQty = totalQty / 1000; finalUnit = 'kg'; }
+                    else { finalUnit = 'g'; }
+                  } else if (isVolume) {
+                    if (totalQty >= 1000) { totalQty = totalQty / 1000; finalUnit = 'l'; }
+                    else { finalUnit = 'ml'; }
+                  } else {
+                    finalUnit = newUnit || oldUnit;
+                  }
+
+                  totalQty = parseFloat(totalQty.toFixed(3));
+
+                  if (totalQty > 0) {
+                    const qtyStr = finalUnit ? `${totalQty} ${finalUnit}` : totalQty;
+                    set((state) => ({ items: state.items.map(i => i.id === itemToRemove.id ? { ...i, quantity: qtyStr } : i) }));
+                    addToast(`Decreased ${itemToRemove.name} to ${qtyStr}`, 'success');
+                  } else {
+                    removeItem(itemToRemove.id);
+                    addToast(`Removed ${itemToRemove.name}`, 'success');
+                  }
+                }
               } else {
                 addToast(`Couldn't find ${itemData.item} in your list`, 'error');
               }

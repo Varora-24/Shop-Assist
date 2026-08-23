@@ -49,10 +49,10 @@ function translateText(text: string) {
 export function fallbackRegexParser(text: string) {
   text = translateText(text);
   let lowerText = text.toLowerCase();
-  const metaPatterns = [/^suggest\b/, /^what should\b/, /^help\b/, /\bhelp me\b/];
+  const metaPatterns = [/^suggest\b/, /^what should\b/, /^help\b/, /\bhelp me\b/, /^recommend\b/, /^how about\b/, /^can you\b/];
   const isPureQuestion = lowerText.includes('?') && !lowerText.includes('add') && !lowerText.includes('buy');
   
-  if (metaPatterns.some(pattern => pattern.test(lowerText)) || isPureQuestion) {
+  if (metaPatterns.some(pattern => pattern.test(lowerText)) || isPureQuestion || lowerText.includes('something to') || lowerText.includes('something for')) {
     return { intent: "none", items: [] };
   }
   
@@ -64,7 +64,9 @@ export function fallbackRegexParser(text: string) {
 
   let splitText = lowerText.replace(/,\s*/g, '|').replace(/\s+and\s+/g, '|').replace(/\s+also\s+/g, '|').replace(/\s+plus\s+/g, '|');
     // Split on numbers that aren't part of a word (e.g. '2 apples 3 bananas' -> '2 apples | 3 bananas')
-    splitText = splitText.replace(/\s+(?=(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b)/g, '|');
+    if (intent === 'add') {
+      splitText = splitText.replace(/\s+(?=(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b)/g, '|');
+    }
   const rawItems = splitText.split('|').map(s => s.trim()).filter(Boolean);
   const items = [];
   
@@ -72,7 +74,7 @@ export function fallbackRegexParser(text: string) {
   units.sort((a, b) => b.length - a.length);
   
   for (let rawItem of rawItems) {
-    let numericQty = 1;
+    let numericQty = null;
     const qtyMatch = rawItem.match(/\b(\d+(\.\d+)?)\b/);
     if (qtyMatch) {
       numericQty = parseFloat(qtyMatch[1]);
@@ -86,6 +88,7 @@ export function fallbackRegexParser(text: string) {
       }
     }
     
+    if (numericQty === null && (intent === 'add' || intent === 'update')) { numericQty = 1; }
     let foundUnit = null;
     for (const unit of units) {
        if (new RegExp(`\\b${unit}s?\\b`, 'i').test(rawItem)) {
@@ -110,7 +113,7 @@ export function fallbackRegexParser(text: string) {
     wordNumbers.forEach(w => { cleaned = cleaned.replace(new RegExp(`\\b${w}\\b`, 'gi'), ' '); });
     
     units.forEach(u => { cleaned = cleaned.replace(new RegExp(`\\b${u}s?\\b`, 'gi'), ' '); });
-    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me', 'from', 'my', 'list', 'cart', 'remove', 'delete', 'take off', 'get rid of'];
+    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me', 'from', 'my', 'list', 'cart', 'remove', 'delete', 'take off', 'get rid of', 'change', 'quantity', 'update', 'set', 'to'];
     fillers.forEach(f => { cleaned = cleaned.replace(new RegExp(`\\b${f}\\b`, 'gi'), ' '); });
     
     cleaned = cleaned.replace(/^(raw|fresh|frozen|canned)\s+/, ' ');
@@ -137,7 +140,8 @@ export function fallbackRegexParser(text: string) {
     });
   }
 
-  return { intent: items.length > 0 ? intent : "none", items };
+  const validItems = items.filter(i => i.item.length >= 2 && i.item !== 'to' && i.item !== 'for' && i.item !== 'some');
+  return { intent: validItems.length > 0 ? intent : "none", items: validItems };
 }
 
 export async function POST(request: Request) {
@@ -166,7 +170,7 @@ export async function POST(request: Request) {
   "items": [
     {
       "item": string,      // core product name ONLY. Strip ALL numbers, units (kg, g, gram, grams, ml, l, liter, litre, dozen, packet, bottle, count words), and filler/polite words (at, of, another, some, more, a bit of, as well, also, please, extra, additional, i need, i want, can you, kindly) regardless of where they appear in the sentence.
-      "quantity": number,  // numeric value only, default 1 if unspecified
+      "quantity": number|null,  // numeric value only, default 1 if add/update, but strictly null if remove without an explicit amount
       "unit": string|null, // normalized unit if present (kg, g, ml, l, count), null if not applicable
       "category": string,  // one of: Produce, Dairy, Meat/Seafood, Bakery, Pantry, Beverages, Snacks, Toiletries, Uncategorized
       "maxPrice": number|null, // for search intent: price ceiling if mentioned, else null
@@ -181,7 +185,7 @@ Rules:
   - If the transcript asks to clear or empty the entire list, return intent: "clear" and items: [].
   - If the transcript asks to change or update the quantity of an existing item, set intent to "update".
 - If the transcript mentions multiple items (via commas, "and", "also", "as well"), return each as a SEPARATE object in the items array.
-- If the transcript is conversational/meta speech and not a genuine list command (e.g. "suggest something", "can you help me", isolated filler sounds), return intent: "none" and items: [].
+- If the transcript is conversational/meta speech and not a genuine list command (e.g. "suggest something", "recommend something for dinner", "can you help me", isolated filler sounds), return intent: "none" and items: [].
 - Always return valid JSON, even for noisy or ambiguous input. Never omit a field.
 - Never include units, numbers, or filler words in the "item" field under any circumstance.
 
