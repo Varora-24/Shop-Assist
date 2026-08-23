@@ -23,7 +23,13 @@ export default function ShoppingList() {
   return (
     <div className="w-full max-w-2xl mx-auto p-4 space-y-6 pb-24">
       {Object.keys(groupedItems).length === 0 ? (
-        <p className="text-center text-gray-500 mt-10">Your list is empty. Tap the mic to add items.</p>
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+          <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mb-6">
+            <ShoppingCart className="w-12 h-12 text-indigo-300" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Your list is empty</h3>
+          <p className="text-gray-500 max-w-sm">Tap the microphone below and say "Add milk" or type a command to get started.</p>
+        </div>
       ) : (
         Object.entries(groupedItems).map(([category, catItems]) => (
           <div key={category} className="space-y-2">

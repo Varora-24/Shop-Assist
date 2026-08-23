@@ -16,6 +16,12 @@ export type HistoryItem = {
   removedAt: number;
 };
 
+export type ToastMessage = {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+};
+
 type ShoppingState = {
   items: Item[];
   history: HistoryItem[];
@@ -26,6 +32,7 @@ type ShoppingState = {
   dismissedSuggestions: string[]; // item names dismissed
   searchResults: any[];
   language: string;
+  toasts: ToastMessage[];
   
   // Actions
   addItem: (item: Omit<Item, 'id'>) => void;
@@ -39,10 +46,12 @@ type ShoppingState = {
   dismissSuggestion: (suggestionId: string, suggestionName: string) => void;
   setSearchResults: (results: any[]) => void;
   clearSearchResults: () => void;
-    clearItems: () => void;
+  clearItems: () => void;
   setLanguage: (lang: string) => void;
   processVoiceCommand: (command: string) => Promise<void>;
   checkHistorySuggestions: () => void;
+  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  removeToast: (id: string) => void;
 };
 
 const SUBSTITUTES: Record<string, string> = {
@@ -53,6 +62,22 @@ const SUBSTITUTES: Record<string, string> = {
   'butter': 'Olive Oil',
   'beef': 'Paneer'
 };
+
+export function matchExistingItem(spokenName: string, list: Item[]): Item | null {
+  const target = spokenName.toLowerCase().replace(/[^\w\s]/g, '').trim();
+  const targetSingular = target.endsWith('es') ? target.slice(0, -2) : (target.endsWith('s') ? target.slice(0, -1) : target);
+
+  return list.find(i => {
+    const iName = i.name.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    const iNameSingular = iName.endsWith('es') ? iName.slice(0, -2) : (iName.endsWith('s') ? iName.slice(0, -1) : iName);
+    
+    if (iName === target || iNameSingular === targetSingular) return true;
+    if (iName.includes(target) || target.includes(iName)) return true;
+    if (iNameSingular && target.includes(iNameSingular)) return true;
+    if (targetSingular && iName.includes(targetSingular)) return true;
+    return false;
+  }) || null;
+}
 
 export const useShoppingStore = create<ShoppingState>()(
   persist(
@@ -66,18 +91,28 @@ export const useShoppingStore = create<ShoppingState>()(
       dismissedSuggestions: [],
       searchResults: [],
       language: 'en-US',
+      toasts: [],
+
+      addToast: (message, type = 'success') => {
+        const id = Date.now().toString();
+        set((state) => ({ toasts: [...state.toasts, { id, message, type }] }));
+        setTimeout(() => {
+          get().removeToast(id);
+        }, 3000);
+      },
+
+      removeToast: (id) => set((state) => ({ toasts: state.toasts.filter(t => t.id !== id) })),
 
       setSearchResults: (results) => set({ searchResults: results }),
       clearSearchResults: () => set({ searchResults: [] }),
+      clearItems: () => {
+        set((state) => {
+          const history = [...state.history];
+          state.items.forEach(item => history.push({ name: item.name, removedAt: Date.now() }));
+          return { items: [], history };
+        });
+      },
       setLanguage: (lang) => set({ language: lang }),
-
-        clearItems: () => {
-          set((state) => {
-            const history = [...state.history];
-            state.items.forEach(item => history.push({ name: item.name, removedAt: Date.now() }));
-            return { items: [], history };
-          });
-        },
 
       replaceItem: (newItem, oldItemId) => {
         set((state) => {
@@ -98,7 +133,6 @@ export const useShoppingStore = create<ShoppingState>()(
         
         for (const [key, substitute] of Object.entries(SUBSTITUTES)) {
           if (lowerName.includes(key) && !get().dismissedSuggestions.includes(substitute)) {
-            // Only add if substitute itself isn't already in the list
             if (!get().items.some(i => i.name.toLowerCase().includes(substitute.toLowerCase()))) {
                 newSuggestions.push({
                   id: Date.now().toString() + '-sub-' + Math.random(),
@@ -113,14 +147,11 @@ export const useShoppingStore = create<ShoppingState>()(
         }
 
         set((state) => {
-          const existingIndex = state.items.findIndex(i => {
-             const iName = i.name.toLowerCase().trim();
-             return iName === lowerName || iName.includes(lowerName) || lowerName.includes(iName);
-          });
+          const existingItem = matchExistingItem(item.name, state.items);
           
-          if (existingIndex !== -1) {
+          if (existingItem) {
              const updatedItems = [...state.items];
-             const existingItem = updatedItems[existingIndex];
+             const existingIndex = state.items.findIndex(i => i.id === existingItem.id);
              
              let currentQty = typeof existingItem.quantity === 'number' ? existingItem.quantity : parseFloat(existingItem.quantity.toString()) || 1;
              let addQty = typeof item.quantity === 'number' ? item.quantity : parseFloat(item.quantity.toString()) || 1;
@@ -130,7 +161,6 @@ export const useShoppingStore = create<ShoppingState>()(
              let newUnit = unitMatch ? unitMatch[0].toLowerCase() : '';
              let oldUnit = oldUnitMatch ? oldUnitMatch[0].toLowerCase() : '';
 
-             // Normalize to base units (grams or ml)
              const isWeight = ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(oldUnit) || ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(newUnit);
              const isVolume = ['l', 'liter', 'litre', 'ml', 'mill'].includes(oldUnit) || ['l', 'liter', 'litre', 'ml', 'mill'].includes(newUnit);
 
@@ -150,7 +180,6 @@ export const useShoppingStore = create<ShoppingState>()(
                finalUnit = newUnit || oldUnit;
              }
 
-             // Handle float precision issue
              totalQty = parseFloat(totalQty.toFixed(3));
 
              updatedItems[existingIndex] = {
@@ -164,7 +193,6 @@ export const useShoppingStore = create<ShoppingState>()(
              };
           }
 
-          // Also clear from history if added back
           const newHistory = state.history.filter(h => h.name.toLowerCase() !== lowerName);
 
           return {
@@ -230,7 +258,7 @@ export const useShoppingStore = create<ShoppingState>()(
       },
 
       processVoiceCommand: async (command) => {
-        const { setTranscript, setIsLoading, addItem, removeItem, setSearchResults, language } = get();
+        const { setTranscript, setIsLoading, addItem, removeItem, setSearchResults, language, addToast, clearItems } = get();
         setTranscript(command);
         setIsLoading(true);
         
@@ -264,37 +292,44 @@ export const useShoppingStore = create<ShoppingState>()(
             }
           } else if (data.intent === 'add') {
             for (const itemData of data.items || []) {
+              const qtyStr = itemData.unit ? `${itemData.quantity} ${itemData.unit}` : itemData.quantity;
               addItem({
                 name: itemData.item,
                 category: itemData.category || 'Uncategorized',
-                quantity: itemData.unit ? `${itemData.quantity} ${itemData.unit}` : itemData.quantity
+                quantity: qtyStr
               });
+              addToast(`Added ${qtyStr} ${itemData.item}`, 'success');
             }
           } else if (data.intent === 'clear') {
-              get().clearItems();
-            } else if (data.intent === 'update') {
-              const currentItems = get().items;
-              for (const itemData of data.items || []) {
-                const itemToUpdate = currentItems.find(i => { const iName = i.name.toLowerCase().trim(); const target = itemData.item.toLowerCase().trim(); return iName === target || iName.includes(target) || target.includes(iName) || (iName + 's') === target || (target + 's') === iName || (iName + 'es') === target || (target + 'es') === iName; });
-                if (itemToUpdate) {
-                  get().replaceItem({ ...itemToUpdate, quantity: itemData.unit ? `${itemData.quantity} ${itemData.unit}` : itemData.quantity }, itemToUpdate.id);
-                } else {
-                  console.warn('Item not found to update:', itemData.item);
-                }
-              }
-            } else if (data.intent === 'remove') {
+            clearItems();
+            addToast('List cleared', 'success');
+          } else if (data.intent === 'update') {
             const currentItems = get().items;
             for (const itemData of data.items || []) {
-              const itemToRemove = currentItems.find(i => { const iName = i.name.toLowerCase().trim(); const target = itemData.item.toLowerCase().trim(); return iName === target || iName.includes(target) || target.includes(iName) || (iName + 's') === target || (target + 's') === iName || (iName + 'es') === target || (target + 'es') === iName; });
+              const itemToUpdate = matchExistingItem(itemData.item, currentItems);
+              if (itemToUpdate) {
+                const qtyStr = itemData.unit ? `${itemData.quantity} ${itemData.unit}` : itemData.quantity;
+                get().replaceItem({ ...itemToUpdate, quantity: qtyStr }, itemToUpdate.id);
+                addToast(`Updated ${itemToUpdate.name} to ${qtyStr}`, 'success');
+              } else {
+                addToast(`Couldn't find ${itemData.item} in your list`, 'error');
+              }
+            }
+          } else if (data.intent === 'remove') {
+            const currentItems = get().items;
+            for (const itemData of data.items || []) {
+              const itemToRemove = matchExistingItem(itemData.item, currentItems);
               if (itemToRemove) {
                 removeItem(itemToRemove.id);
+                addToast(`Removed ${itemToRemove.name}`, 'success');
               } else {
-                console.warn('Item not found to remove:', itemData.item);
+                addToast(`Couldn't find ${itemData.item} in your list`, 'error');
               }
             }
           }
         } catch (error) {
           console.error('Failed to process command', error);
+          addToast('Failed to process command', 'error');
         } finally {
           setIsLoading(false);
           setTimeout(() => setTranscript(''), 2000); 
