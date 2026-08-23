@@ -251,8 +251,9 @@ Transcript: "${transcript}"`;
        }
        if (!item.unit) {
          const transcriptLower = transcript.toLowerCase();
-         const regex1 = new RegExp(`\\b${item.item.toLowerCase()}\\b[^]*?\\b(${allUnits.join('|')})\\b`, 'i');
-         const regex2 = new RegExp(`\\b(${allUnits.join('|')})\\b[^]*?\\b${item.item.toLowerCase()}\\b`, 'i');
+         const baseItem = item.item.toLowerCase().replace(/s$/, '');
+         const regex1 = new RegExp(`\\b${baseItem}s?\\b[^]*?(?:\\b|\\d)\\s*(${allUnits.join('|')})\\b`, 'i');
+         const regex2 = new RegExp(`(?:\\b|\\d)\\s*(${allUnits.join('|')})\\b[^]*?\\b${baseItem}s?\\b`, 'i');
          const qm = transcriptLower.match(regex1) || transcriptLower.match(regex2);
          if (qm) {
            item.unit = qm[1].toLowerCase();
