@@ -325,6 +325,8 @@ export const useShoppingStore = create<ShoppingState>()(
           
           if (data.intent === 'none') {
             // do nothing
+          } else if (data.intent === 'inappropriate') {
+            addToast('Inappropriate item detected', 'error');
           } else if (data.intent === 'search') {
             const itemData = data.items && data.items[0];
             if (itemData) {

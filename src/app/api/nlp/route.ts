@@ -53,13 +53,11 @@ function isItemValid(itemStr: string): boolean {
   const lower = itemStr.toLowerCase().trim();
   const exactAbsurd = ['to', 'for', 'some', 'and', 'sorry', 'no', 'just', 'read', 'baby', 'full stop', 'comma', 'adam bust', 'inr1000'];
   if (exactAbsurd.includes(lower)) return false;
-  
-  if (lower.includes('shop assist') || lower.includes('comma') || lower.includes('full stop')) return false;
-  if (itemStr.includes('*')) return false; // ban censored words
-  
-  const isAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro', 'leg', 'legs', 'hand', 'hands', 'arm', 'arms', 'head', 'foot', 'feet', 'finger', 'toe', 'eye', 'ear', 'nose', 'mouth', 'vehicle', 'car', 'truck', 'bike', 'motorcycle', 'boat', 'airplane', 'aircraft'].some(k => new RegExp(`\\b${k}\\b`, 'i').test(lower));
-  if (isAdversarial) return false;
-  
+  if (lower.includes('*') || lower.includes('shop assist') || lower.includes('comma') || lower.includes('full stop')) return false;
+
+  const engAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro', 'leg', 'legs', 'hand', 'hands', 'arm', 'arms', 'head', 'foot', 'feet', 'finger', 'toe', 'eye', 'ear', 'nose', 'mouth', 'vehicle', 'car', 'truck', 'bike', 'motorcycle', 'boat', 'airplane', 'aircraft'].some(k => new RegExp(`\\b${k}\\b`, 'i').test(lower));
+  const hindiProfanity = ['भोसड़ा', 'कलेजी', 'मादरचोद', 'बहनचोद', 'चूतिया', 'गांड', 'लौड़ा', 'bhosada', 'madarchod', 'bhenchod', 'chutiya', 'gand', 'lauda', 'loda', 'bhosadike'].some(k => lower.includes(k));
+  if (engAdversarial || hindiProfanity) return false;
   return true;
 }
 
@@ -154,6 +152,7 @@ export function fallbackRegexParser(text: string) {
   }
 
   const filteredItems = items.filter(i => isItemValid(i.item));
+  if (filteredItems.length < items.length) return { intent: 'inappropriate', items: [] };
   return { intent: filteredItems.length > 0 ? intent : "none", items: filteredItems };
 }
 
@@ -235,12 +234,12 @@ Transcript: "${transcript}"`;
     }
 
     // Validate Gemini Output
+    const originalLength = parsedData.items.length;
     parsedData.items = parsedData.items.filter((i: any) => isItemValid(i.item));
-    if (parsedData.items.length === 0) parsedData.intent = 'none';
+    if (parsedData.items.length < originalLength) parsedData.intent = 'inappropriate';
+    else if (parsedData.items.length === 0 && parsedData.intent !== 'inappropriate') parsedData.intent = 'none';
 
-    // Validate Gemini Output
-    parsedData.items = parsedData.items.filter((i: any) => isItemValid(i.item));
-    if (parsedData.items.length === 0) parsedData.intent = 'none';
+    
     
     
     // Categorize and extract unit fallback if LLM missed it
