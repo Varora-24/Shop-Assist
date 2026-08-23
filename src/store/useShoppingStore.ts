@@ -63,6 +63,47 @@ const SUBSTITUTES: Record<string, string> = {
   'beef': 'Paneer'
 };
 
+
+export function normalizeQuantity(qty1: number | string, qty2: number | string, isSubtract = false) {
+  let q1 = typeof qty1 === 'number' ? qty1 : parseFloat(qty1?.toString()) || 1;
+  let q2 = typeof qty2 === 'number' ? qty2 : parseFloat(qty2?.toString()) || 1;
+  
+  const u1Match = qty1?.toString().match(/[a-zA-Z]+/);
+  const u2Match = qty2?.toString().match(/[a-zA-Z]+/);
+  const u1 = u1Match ? u1Match[0].toLowerCase() : '';
+  const u2 = u2Match ? u2Match[0].toLowerCase() : (u1 || '');
+
+  const isWeight = ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(u1) || ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(u2);
+  const isVolume = ['l', 'liter', 'litre', 'ml', 'mill'].includes(u1) || ['l', 'liter', 'litre', 'ml', 'mill'].includes(u2);
+
+  if (['kg', 'l', 'liter', 'litre'].includes(u1)) q1 *= 1000;
+  if (['kg', 'l', 'liter', 'litre'].includes(u2)) q2 *= 1000;
+
+  let totalQty = isSubtract ? q1 - q2 : q1 + q2;
+  let finalUnit = '';
+
+  if (isWeight) {
+    if (totalQty >= 1000) { totalQty /= 1000; finalUnit = 'kg'; }
+    else { finalUnit = 'g'; }
+  } else if (isVolume) {
+    if (totalQty >= 1000) { totalQty /= 1000; finalUnit = 'l'; }
+    else { finalUnit = 'ml'; }
+  } else {
+    finalUnit = u2 || u1;
+  }
+
+  if (totalQty > 1000 && !isWeight && !isVolume) {
+     console.warn(`Quantity sanity ceiling hit: computed ${totalQty} ${finalUnit}. Capping at 1000.`);
+     totalQty = 1000;
+  } else if ((isWeight || isVolume) && totalQty > 100) {
+     console.warn(`Quantity sanity ceiling hit: computed ${totalQty} ${finalUnit}. Capping at 100.`);
+     totalQty = 100;
+  }
+
+  totalQty = parseFloat(totalQty.toFixed(3));
+  return { value: totalQty, unit: finalUnit, str: finalUnit ? `${totalQty} ${finalUnit}` : totalQty };
+}
+
 export function matchExistingItem(spokenName: string, list: Item[]): Item | null {
   const target = spokenName.toLowerCase().replace(/[^\w\s]/g, '').trim();
   const targetSingular = target.endsWith('es') ? target.slice(0, -2) : (target.endsWith('s') ? target.slice(0, -1) : target);
@@ -153,38 +194,11 @@ export const useShoppingStore = create<ShoppingState>()(
              const updatedItems = [...state.items];
              const existingIndex = state.items.findIndex(i => i.id === existingItem.id);
              
-             let currentQty = typeof existingItem.quantity === 'number' ? existingItem.quantity : parseFloat(existingItem.quantity.toString()) || 1;
-             let addQty = typeof item.quantity === 'number' ? item.quantity : parseFloat(item.quantity.toString()) || 1;
-             
-             const unitMatch = item.quantity.toString().match(/[a-zA-Z]+/);
-             const oldUnitMatch = existingItem.quantity.toString().match(/[a-zA-Z]+/);
-             let newUnit = unitMatch ? unitMatch[0].toLowerCase() : '';
-             let oldUnit = oldUnitMatch ? oldUnitMatch[0].toLowerCase() : '';
-
-             const isWeight = ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(oldUnit) || ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(newUnit);
-             const isVolume = ['l', 'liter', 'litre', 'ml', 'mill'].includes(oldUnit) || ['l', 'liter', 'litre', 'ml', 'mill'].includes(newUnit);
-
-             if (oldUnit === 'kg' || oldUnit === 'l' || oldUnit === 'liter' || oldUnit === 'litre') currentQty *= 1000;
-             if (newUnit === 'kg' || newUnit === 'l' || newUnit === 'liter' || newUnit === 'litre') addQty *= 1000;
-             
-             let totalQty = currentQty + addQty;
-             let finalUnit = '';
-
-             if (isWeight) {
-               if (totalQty >= 1000) { totalQty = totalQty / 1000; finalUnit = 'kg'; }
-               else { finalUnit = 'g'; }
-             } else if (isVolume) {
-               if (totalQty >= 1000) { totalQty = totalQty / 1000; finalUnit = 'l'; }
-               else { finalUnit = 'ml'; }
-             } else {
-               finalUnit = newUnit || oldUnit;
-             }
-
-             totalQty = parseFloat(totalQty.toFixed(3));
-
+             const merged = normalizeQuantity(existingItem.quantity, item.quantity, false);
+             console.log(`MERGE MATH [ADD]: Existing (${existingItem.quantity}) + Incoming (${item.quantity}) = ${merged.str}`);
              updatedItems[existingIndex] = {
                 ...existingItem,
-                quantity: finalUnit ? `${totalQty} ${finalUnit}` : totalQty
+                quantity: merged.str
              };
              
              return {
@@ -277,15 +291,23 @@ export const useShoppingStore = create<ShoppingState>()(
           } else if (data.intent === 'search') {
             const itemData = data.items && data.items[0];
             if (itemData) {
-               const searchName = itemData.item.toLowerCase();
+               let searchName = itemData.item.toLowerCase();
                const searchBrand = itemData.brand ? itemData.brand.toLowerCase() : null;
                const maxPrice = itemData.maxPrice;
+
+               let targetTier = null;
+               if (/\b(cheap|basic|budget|value)\b/.test(searchName)) { targetTier = 'basic'; }
+               else if (/\b(standard|regular|mid)\b/.test(searchName)) { targetTier = 'standard'; }
+               else if (/\b(premium|organic|expensive|high-end)\b/.test(searchName)) { targetTier = 'premium'; }
                
+               searchName = searchName.replace(/\b(cheap|basic|budget|value|standard|regular|mid|premium|organic|expensive|high-end)\b/g, '').trim();
+
                const filtered = MOCK_PRODUCTS.filter(p => {
                   let match = true;
                   if (searchName && !p.name.toLowerCase().includes(searchName)) match = false;
                   if (searchBrand && !p.brand.toLowerCase().includes(searchBrand)) match = false;
                   if (maxPrice && p.price > maxPrice) match = false;
+                  if (targetTier && p.tier !== targetTier) match = false;
                   return match;
                });
                setSearchResults(filtered);
@@ -325,39 +347,12 @@ export const useShoppingStore = create<ShoppingState>()(
                   addToast(`Removed ${itemToRemove.name}`, 'success');
                 } else {
                   // Partial removal
-                  let currentQty = typeof itemToRemove.quantity === 'number' ? itemToRemove.quantity : parseFloat(itemToRemove.quantity.toString()) || 1;
-                  let removeQty = typeof itemData.quantity === 'number' ? itemData.quantity : parseFloat(itemData.quantity?.toString()) || 1;
+                  const reduced = normalizeQuantity(itemToRemove.quantity, itemData.quantity + (itemData.unit ? ' ' + itemData.unit : ''), true);
+                  console.log(`MERGE MATH [REMOVE]: Existing (${itemToRemove.quantity}) - Incoming (${itemData.quantity} ${itemData.unit}) = ${reduced.str}`);
                   
-                  const oldUnitMatch = itemToRemove.quantity.toString().match(/[a-zA-Z]+/);
-                  const newUnitMatch = (itemData.unit || '').match(/[a-zA-Z]+/);
-                  let oldUnit = oldUnitMatch ? oldUnitMatch[0].toLowerCase() : '';
-                  let newUnit = newUnitMatch ? newUnitMatch[0].toLowerCase() : (oldUnit || '');
-
-                  const isWeight = ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(oldUnit) || ['kg', 'g', 'gram', 'grams', 'lbs', 'lb', 'oz'].includes(newUnit);
-                  const isVolume = ['l', 'liter', 'litre', 'ml', 'mill'].includes(oldUnit) || ['l', 'liter', 'litre', 'ml', 'mill'].includes(newUnit);
-
-                  if (oldUnit === 'kg' || oldUnit === 'l' || oldUnit === 'liter' || oldUnit === 'litre') currentQty *= 1000;
-                  if (newUnit === 'kg' || newUnit === 'l' || newUnit === 'liter' || newUnit === 'litre') removeQty *= 1000;
-                  
-                  let totalQty = currentQty - removeQty;
-                  let finalUnit = '';
-
-                  if (isWeight) {
-                    if (totalQty >= 1000) { totalQty = totalQty / 1000; finalUnit = 'kg'; }
-                    else { finalUnit = 'g'; }
-                  } else if (isVolume) {
-                    if (totalQty >= 1000) { totalQty = totalQty / 1000; finalUnit = 'l'; }
-                    else { finalUnit = 'ml'; }
-                  } else {
-                    finalUnit = newUnit || oldUnit;
-                  }
-
-                  totalQty = parseFloat(totalQty.toFixed(3));
-
-                  if (totalQty > 0) {
-                    const qtyStr = finalUnit ? `${totalQty} ${finalUnit}` : totalQty;
-                    set((state) => ({ items: state.items.map(i => i.id === itemToRemove.id ? { ...i, quantity: qtyStr } : i) }));
-                    addToast(`Decreased ${itemToRemove.name} to ${qtyStr}`, 'success');
+                  if (reduced.value > 0) {
+                    set((state) => ({ items: state.items.map(i => i.id === itemToRemove.id ? { ...i, quantity: reduced.str } : i) }));
+                    addToast(`Decreased ${itemToRemove.name} to ${reduced.str}`, 'success');
                   } else {
                     removeItem(itemToRemove.id);
                     addToast(`Removed ${itemToRemove.name}`, 'success');

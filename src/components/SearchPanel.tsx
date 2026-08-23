@@ -5,24 +5,25 @@ import { Search, Plus } from 'lucide-react';
 import { useShoppingStore } from '@/store/useShoppingStore';
 
 export const MOCK_PRODUCTS = [
-  { id: '1', name: 'Organic Apples', brand: 'FarmFresh', price: 4.99, category: 'Produce' },
-  { id: '2', name: 'Apples', brand: 'StoreBrand', price: 2.99, category: 'Produce' },
-  { id: '3', name: 'Whole Milk', brand: 'DairyPure', price: 3.49, category: 'Dairy' },
-  { id: '4', name: 'Almond Milk', brand: 'Silk', price: 4.49, category: 'Dairy' },
-  { id: '5', name: 'Whole Wheat Bread', brand: 'Nature', price: 3.99, category: 'Bakery' },
-  { id: '6', name: 'White Bread', brand: 'StoreBrand', price: 1.99, category: 'Bakery' },
-  { id: '7', name: 'Toothpaste', brand: 'Colgate', price: 3.99, category: 'Toiletries' },
-  { id: '8', name: 'Toothpaste', brand: 'Crest', price: 4.50, category: 'Toiletries' },
-  { id: '9', name: 'Toothpaste', brand: 'StoreBrand', price: 1.50, category: 'Toiletries' },
-  { id: '10', name: 'Orange Juice', brand: 'Tropicana', price: 5.99, category: 'Beverages' },
-  { id: '11', name: 'Orange Juice', brand: 'Florida', price: 4.99, category: 'Beverages' },
-  { id: '12', name: 'Chicken Breast', brand: 'Tyson', price: 8.99, category: 'Meat/Seafood' },
-  { id: '13', name: 'Chicken Thighs', brand: 'StoreBrand', price: 5.99, category: 'Meat/Seafood' },
-  { id: '14', name: 'Cheddar Cheese', brand: 'Kraft', price: 4.99, category: 'Dairy' },
-  { id: '15', name: 'Coffee Beans', brand: 'Starbucks', price: 12.99, category: 'Beverages' },
-  { id: '16', name: 'Coffee Beans', brand: 'Folgers', price: 7.99, category: 'Beverages' },
-  { id: '17', name: 'Potato Chips', brand: 'Lays', price: 3.99, category: 'Snacks' },
-  { id: '18', name: 'Tortilla Chips', brand: 'Doritos', price: 4.50, category: 'Snacks' },
+  { id: 'm1', name: 'Milk - Basic', brand: 'ValueBrand', price: 1.99, category: 'Dairy', tier: 'basic' },
+  { id: 'm2', name: 'Milk - Standard', brand: 'DairyPure', price: 3.49, category: 'Dairy', tier: 'standard' },
+  { id: 'm3', name: 'Milk - Premium Organic', brand: 'Horizon', price: 5.99, category: 'Dairy', tier: 'premium' },
+  
+  { id: 'b1', name: 'Bread - Basic', brand: 'ValueBrand', price: 1.49, category: 'Bakery', tier: 'basic' },
+  { id: 'b2', name: 'Bread - Standard', brand: 'Nature', price: 3.99, category: 'Bakery', tier: 'standard' },
+  { id: 'b3', name: 'Bread - Premium Artisan', brand: 'LaBrea', price: 6.99, category: 'Bakery', tier: 'premium' },
+  
+  { id: 't1', name: 'Toothpaste - Basic', brand: 'ValueBrand', price: 1.50, category: 'Toiletries', tier: 'basic' },
+  { id: 't2', name: 'Toothpaste - Standard', brand: 'Colgate', price: 3.99, category: 'Toiletries', tier: 'standard' },
+  { id: 't3', name: 'Toothpaste - Premium Whitening', brand: 'Crest', price: 6.50, category: 'Toiletries', tier: 'premium' },
+  
+  { id: 'c1', name: 'Chicken - Basic', brand: 'ValueBrand', price: 5.99, category: 'Meat/Seafood', tier: 'basic' },
+  { id: 'c2', name: 'Chicken - Standard', brand: 'Tyson', price: 8.99, category: 'Meat/Seafood', tier: 'standard' },
+  { id: 'c3', name: 'Chicken - Premium Free Range', brand: 'Bell&Evans', price: 14.99, category: 'Meat/Seafood', tier: 'premium' },
+
+  { id: 'r1', name: 'Rice - Basic', brand: 'ValueBrand', price: 2.99, category: 'Pantry', tier: 'basic' },
+  { id: 'r2', name: 'Rice - Standard', brand: 'UncleBens', price: 4.99, category: 'Pantry', tier: 'standard' },
+  { id: 'r3', name: 'Rice - Premium Jasmine', brand: 'Mahatma', price: 8.99, category: 'Pantry', tier: 'premium' },
 ];
 
 export default function SearchPanel() {
@@ -45,7 +46,8 @@ export default function SearchPanel() {
             </div>
             <button
               onClick={() => {
-                addItem({ name: `${product.brand} ${product.name}`, category: product.category, quantity: 1 });
+                const baseName = product.name.split(' - ')[0];
+                addItem({ name: baseName, category: product.category, quantity: 1 });
                 // Optional: clear on add? Spec says "move it into the list if desired", doesn't explicitly require clearing.
               }}
               className="text-xs bg-blue-600 text-white px-4 py-1.5 rounded-full hover:bg-blue-700 transition-colors shadow-sm font-medium"

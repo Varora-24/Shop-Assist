@@ -141,7 +141,15 @@ export function fallbackRegexParser(text: string) {
   }
 
   const validItems = items.filter(i => i.item.length >= 2 && i.item !== 'to' && i.item !== 'for' && i.item !== 'some');
-  return { intent: validItems.length > 0 ? intent : "none", items: validItems };
+  const filteredItems = validItems.filter(i => {
+    // Check adversarial words
+    const lower = i.item.toLowerCase();
+    const isAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro'].some(k => lower.includes(k));
+    if (isAdversarial) return false;
+    
+    return true;
+  });
+  return { intent: filteredItems.length > 0 ? intent : "none", items: filteredItems };
 }
 
 export async function POST(request: Request) {
