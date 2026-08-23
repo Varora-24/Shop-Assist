@@ -264,7 +264,7 @@ export const useShoppingStore = create<ShoppingState>()(
           } else if (data.intent === 'remove') {
             const currentItems = get().items;
             for (const itemData of data.items || []) {
-              const itemToRemove = currentItems.find(i => i.name.toLowerCase().includes(itemData.item.toLowerCase()));
+              const itemToRemove = currentItems.find(i => { const iName = i.name.toLowerCase().trim(); const target = itemData.item.toLowerCase().trim(); return iName === target || iName.includes(target) || target.includes(iName) || (iName + 's') === target || (target + 's') === iName || (iName + 'es') === target || (target + 'es') === iName; });
               if (itemToRemove) {
                 removeItem(itemToRemove.id);
               } else {

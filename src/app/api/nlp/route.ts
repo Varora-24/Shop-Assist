@@ -108,7 +108,7 @@ export function fallbackRegexParser(text: string) {
     wordNumbers.forEach(w => { cleaned = cleaned.replace(new RegExp(`\\b${w}\\b`, 'gi'), ' '); });
     
     units.forEach(u => { cleaned = cleaned.replace(new RegExp(`\\b${u}s?\\b`, 'gi'), ' '); });
-    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me'];
+    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me', 'from', 'my', 'list', 'cart', 'remove', 'delete', 'take off', 'get rid of'];
     fillers.forEach(f => { cleaned = cleaned.replace(new RegExp(`\\b${f}\\b`, 'gi'), ' '); });
     
     cleaned = cleaned.replace(/^(raw|fresh|frozen|canned)\s+/, ' ');
