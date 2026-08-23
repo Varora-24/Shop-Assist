@@ -57,7 +57,7 @@ function isItemValid(itemStr: string): boolean {
   if (lower.includes('shop assist') || lower.includes('comma') || lower.includes('full stop')) return false;
   if (itemStr.includes('*')) return false; // ban censored words
   
-  const isAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro', 'leg', 'legs', 'hand', 'hands', 'arm', 'arms', 'head', 'foot', 'feet', 'finger', 'toe', 'eye', 'ear', 'nose', 'mouth', 'vehicle', 'car', 'truck', 'bike', 'motorcycle', 'boat', 'airplane', 'aircraft'].some(k => lower.includes(k) || lower === k);
+  const isAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro', 'leg', 'legs', 'hand', 'hands', 'arm', 'arms', 'head', 'foot', 'feet', 'finger', 'toe', 'eye', 'ear', 'nose', 'mouth', 'vehicle', 'car', 'truck', 'bike', 'motorcycle', 'boat', 'airplane', 'aircraft'].some(k => new RegExp(`\\b${k}\\b`, 'i').test(lower));
   if (isAdversarial) return false;
   
   return true;
@@ -242,12 +242,24 @@ Transcript: "${transcript}"`;
     parsedData.items = parsedData.items.filter((i: any) => isItemValid(i.item));
     if (parsedData.items.length === 0) parsedData.intent = 'none';
     
-    // Categorize fallback if LLM missed it
+    
+    // Categorize and extract unit fallback if LLM missed it
+    const allUnits = ['kg', 'grams', 'gram', 'g', 'ml', 'mill', 'l', 'liter', 'litre', 'lbs', 'lb', 'oz', 'dozen', 'packets', 'packet', 'bottles', 'bottle', 'loaves', 'loaf', 'pieces', 'piece', 'packs', 'pack', 'bunches', 'bunch'];
     parsedData.items.forEach((item: any) => {
        if (item.category === 'Uncategorized' || item.category === 'Other' || !item.category) {
          item.category = inferCategory(item.item);
        }
+       if (!item.unit) {
+         const transcriptLower = transcript.toLowerCase();
+         const regex1 = new RegExp(`\\b${item.item.toLowerCase()}\\b[^]*?\\b(${allUnits.join('|')})\\b`, 'i');
+         const regex2 = new RegExp(`\\b(${allUnits.join('|')})\\b[^]*?\\b${item.item.toLowerCase()}\\b`, 'i');
+         const qm = transcriptLower.match(regex1) || transcriptLower.match(regex2);
+         if (qm) {
+           item.unit = qm[1].toLowerCase();
+         }
+       }
     });
+
 
     return NextResponse.json(parsedData);
     
