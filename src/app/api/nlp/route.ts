@@ -64,15 +64,13 @@ function isItemValid(itemStr: string): boolean {
 export function fallbackRegexParser(text: string) {
   text = translateText(text);
   let lowerText = text.toLowerCase();
-  const metaPatterns = [/^suggest\b/, /^what should\b/, /^help\b/, /\bhelp me\b/, /^recommend\b/, /^how about\b/, /^can you\b/];
   const isPureQuestion = lowerText.includes('?') && !lowerText.includes('add') && !lowerText.includes('buy');
-  
-  if (metaPatterns.some(pattern => pattern.test(lowerText)) || isPureQuestion || lowerText.includes('something to') || lowerText.includes('something for')) {
+  if (/^suggest\s+(something|anything)\b/.test(lowerText) || /^recommend\s+(something|anything)\b/.test(lowerText) || isPureQuestion || lowerText.includes('something to') || lowerText.includes('something for') || /^what should\b/.test(lowerText) || /^help\b/.test(lowerText) || /\bhelp me\b/.test(lowerText) || /^how about\b/.test(lowerText) || /^can you\b/.test(lowerText)) {
     return { intent: "none", items: [] };
   }
   
   let intent = 'add';
-  if (lowerText.includes('find') || lowerText.includes('search') || lowerText.includes('look for') || lowerText.includes('show me') || /\b(cheap|expensive|premium|budget|organic|basic)\b/.test(lowerText)) intent = 'search';
+  if (lowerText.includes('find') || lowerText.includes('search') || lowerText.includes('look for') || lowerText.includes('show me') || /\b(cheap|expensive|premium|budget|organic|basic)\b/.test(lowerText) || lowerText.includes('suggest ') || lowerText.includes('recommend ')) intent = 'search';
   if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ') || lowerText.startsWith('take off ')) intent = 'remove';
     if (lowerText.includes('clear list') || lowerText.includes('empty list') || lowerText === 'clear') return { intent: 'clear', items: [] };
     if (lowerText.startsWith('update ') || lowerText.startsWith('change ') || lowerText.includes(' quantity')) intent = 'update';
@@ -89,14 +87,30 @@ export function fallbackRegexParser(text: string) {
   units.sort((a, b) => b.length - a.length);
   
   for (let rawItem of rawItems) {
+    let maxPrice = null;
+    let cleaned = rawItem;
+    
+    // 1. Extract and strip price first
+    const priceMatch = cleaned.match(/(?:under|below|less than|max(?:imum)?)\s*\$?(\d+(\.\d+)?)(?:\s*dollars?)?|\$(\d+(\.\d+)?)/i);
+    if (priceMatch) {
+       maxPrice = parseFloat(priceMatch[1] || priceMatch[3]);
+       cleaned = cleaned.replace(priceMatch[0], ' ');
+    }
+    const loosePriceMatch = cleaned.match(/(?:under|below|less than|max(?:imum)?)\s+(\d+(\.\d+)?)/i);
+    if (loosePriceMatch) {
+       if (!maxPrice) maxPrice = parseFloat(loosePriceMatch[1]);
+       cleaned = cleaned.replace(loosePriceMatch[0], ' ');
+    }
+
+    // 2. Now extract quantity from the cleaned string
     let numericQty = null;
-    const qtyMatch = rawItem.match(/\b(\d+(\.\d+)?)\s*([a-zA-Z]+)?\b/);
+    const qtyMatch = cleaned.match(/\b(\d+(\.\d+)?)\s*([a-zA-Z]+)?\b/);
     if (qtyMatch) {
       numericQty = parseFloat(qtyMatch[1]);
     } else {
       const wordToNum: Record<string, number> = {'half': 0.5, 'a half': 0.5, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10};
       for (const [w, n] of Object.entries(wordToNum)) {
-        if (new RegExp(`\\b${w}\\b`, 'i').test(rawItem)) {
+        if (new RegExp(`\\b${w}\\b`, 'i').test(cleaned)) {
           numericQty = n;
           break;
         }
@@ -104,27 +118,36 @@ export function fallbackRegexParser(text: string) {
     }
     
     if (numericQty === null && (intent === 'add' || intent === 'update')) { numericQty = 1; }
-    let foundUnit = null;
-    const qm = rawItem.match(/\b(\d+(\.\d+)?)\s*([a-zA-Z]+)?\b/);
-    if (qm && qm[3] && units.includes(qm[3].toLowerCase())) { foundUnit = qm[3].toLowerCase(); } else { for (const unit of units) { if (new RegExp(`(?:\\b|\\d)\\s*\${unit}s?\\b`, 'i').test(rawItem)) { foundUnit = unit; break; } } }
     
-    // Clean name
-    let cleaned = rawItem;
-
-    let maxPrice = null;
-    const priceMatch = rawItem.match(/under \$?(\d+)/);
-    if (priceMatch) {
-       maxPrice = parseFloat(priceMatch[1]);
-       cleaned = cleaned.replace(priceMatch[0], ' ');
+    // 3. Extract unit
+    let foundUnit = null;
+    const qm = cleaned.match(/\b(\d+(\.\d+)?)\s*([a-zA-Z]+)?\b/);
+    if (qm && qm[3] && units.includes(qm[3].toLowerCase())) { 
+        foundUnit = qm[3].toLowerCase(); 
+    } else { 
+        for (const unit of units) { 
+            if (new RegExp(`(?:\\b|\\d)\\s*\${unit}s?\\b`, 'i').test(cleaned)) { 
+                foundUnit = unit; 
+                break; 
+            } 
+        } 
     }
-
+    
     // VERY STRICT strip!
-    cleaned = cleaned.replace(/\b\d+(\.\d+)?\s*[a-zA-Z]*\b/g, ' ');
+    // Instead of blindly stripping the number and the following word, we specifically strip the match
+    const qMatch2 = cleaned.match(/\b(\d+(\.\d+)?)\s*([a-zA-Z]+)?\b/);
+    if (qMatch2) {
+      if (qMatch2[3] && units.includes(qMatch2[3].toLowerCase())) {
+         cleaned = cleaned.replace(qMatch2[0], ' ');
+      } else {
+         cleaned = cleaned.replace(qMatch2[1], ' ');
+      }
+    }
     const wordNumbers = ['a half', 'half', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
     wordNumbers.forEach(w => { cleaned = cleaned.replace(new RegExp(`\\b${w}\\b`, 'gi'), ' '); });
     
     units.forEach(u => { cleaned = cleaned.replace(new RegExp(`\\b${u}s?\\b`, 'gi'), ' '); });
-    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me', 'from', 'my', 'list', 'cart', 'remove', 'delete', 'take off', 'get rid of', 'change', 'quantity', 'update', 'set', 'to', 'and'];
+    const fillers = ['at', 'of', 'another', 'some', 'more', 'a bit of', 'as well', 'also', 'please', 'extra', 'additional', 'add', 'need', 'buy', 'get', 'want', 'a', 'an', 'the', 'find', 'search', 'look for', 'show me', 'suggest', 'recommend', 'from', 'my', 'list', 'cart', 'remove', 'delete', 'take off', 'get rid of', 'change', 'quantity', 'update', 'set', 'to', 'and', 'just'];
     fillers.forEach(f => { cleaned = cleaned.replace(new RegExp(`\\b${f}\\b`, 'gi'), ' '); });
     
     cleaned = cleaned.replace(/^(raw|fresh|frozen|canned)\s+/, ' ');
