@@ -81,6 +81,8 @@ export default function VoiceButton() {
             <option value="en-US">English</option>
             <option value="hi-IN">Hindi</option>
             <option value="es-ES">Spanish</option>
+            <option value="te-IN">Telugu</option>
+            <option value="ta-IN">Tamil</option>
           </select>
         </div>
         {error && <div className="mb-2 text-xs text-red-500 bg-red-50 p-2 rounded-lg border border-red-100 shadow-sm">{error}</div>}

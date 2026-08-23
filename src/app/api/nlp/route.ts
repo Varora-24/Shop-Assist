@@ -58,7 +58,9 @@ export function fallbackRegexParser(text: string) {
   
   let intent = 'add';
   if (lowerText.includes('find') || lowerText.includes('search') || lowerText.includes('look for')) intent = 'search';
-  if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ')) intent = 'remove';
+  if (lowerText.startsWith('remove ') || lowerText.startsWith('delete ') || lowerText.startsWith('take off ')) intent = 'remove';
+    if (lowerText.includes('clear list') || lowerText.includes('empty list') || lowerText === 'clear') return { intent: 'clear', items: [] };
+    if (lowerText.startsWith('update ') || lowerText.startsWith('change ') || lowerText.includes(' quantity')) intent = 'update';
 
   let splitText = lowerText.replace(/,\s*/g, '|').replace(/\s+and\s+/g, '|').replace(/\s+also\s+/g, '|').replace(/\s+plus\s+/g, '|');
     // Split on numbers that aren't part of a word (e.g. '2 apples 3 bananas' -> '2 apples | 3 bananas')
@@ -160,7 +162,7 @@ export async function POST(request: Request) {
     const prompt = `You are a shopping list voice command parser. From the transcript, extract and return ONLY valid JSON with this exact shape:
 
 {
-  "intent": "add" | "remove" | "search" | "none",
+  "intent": "add" | "remove" | "search" | "update" | "clear" | "none",
   "items": [
     {
       "item": string,      // core product name ONLY. Strip ALL numbers, units (kg, g, gram, grams, ml, l, liter, litre, dozen, packet, bottle, count words), and filler/polite words (at, of, another, some, more, a bit of, as well, also, please, extra, additional, i need, i want, can you, kindly) regardless of where they appear in the sentence.
@@ -176,6 +178,8 @@ export async function POST(request: Request) {
 Rules:
 - The following transcript may be in ${language}. Extract the item name translated into English for consistent categorization, but preserve the original spoken quantity/unit logic.
 - If the transcript contains search language ("find", "search for", "show me", "look for"), set intent to "search".
+  - If the transcript asks to clear or empty the entire list, return intent: "clear" and items: [].
+  - If the transcript asks to change or update the quantity of an existing item, set intent to "update".
 - If the transcript mentions multiple items (via commas, "and", "also", "as well"), return each as a SEPARATE object in the items array.
 - If the transcript is conversational/meta speech and not a genuine list command (e.g. "suggest something", "can you help me", isolated filler sounds), return intent: "none" and items: [].
 - Always return valid JSON, even for noisy or ambiguous input. Never omit a field.

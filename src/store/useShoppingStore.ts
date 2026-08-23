@@ -39,6 +39,7 @@ type ShoppingState = {
   dismissSuggestion: (suggestionId: string, suggestionName: string) => void;
   setSearchResults: (results: any[]) => void;
   clearSearchResults: () => void;
+    clearItems: () => void;
   setLanguage: (lang: string) => void;
   processVoiceCommand: (command: string) => Promise<void>;
   checkHistorySuggestions: () => void;
@@ -69,6 +70,14 @@ export const useShoppingStore = create<ShoppingState>()(
       setSearchResults: (results) => set({ searchResults: results }),
       clearSearchResults: () => set({ searchResults: [] }),
       setLanguage: (lang) => set({ language: lang }),
+
+        clearItems: () => {
+          set((state) => {
+            const history = [...state.history];
+            state.items.forEach(item => history.push({ name: item.name, removedAt: Date.now() }));
+            return { items: [], history };
+          });
+        },
 
       replaceItem: (newItem, oldItemId) => {
         set((state) => {
@@ -261,7 +270,19 @@ export const useShoppingStore = create<ShoppingState>()(
                 quantity: itemData.unit ? `${itemData.quantity} ${itemData.unit}` : itemData.quantity
               });
             }
-          } else if (data.intent === 'remove') {
+          } else if (data.intent === 'clear') {
+              get().clearItems();
+            } else if (data.intent === 'update') {
+              const currentItems = get().items;
+              for (const itemData of data.items || []) {
+                const itemToUpdate = currentItems.find(i => { const iName = i.name.toLowerCase().trim(); const target = itemData.item.toLowerCase().trim(); return iName === target || iName.includes(target) || target.includes(iName) || (iName + 's') === target || (target + 's') === iName || (iName + 'es') === target || (target + 'es') === iName; });
+                if (itemToUpdate) {
+                  get().replaceItem({ ...itemToUpdate, quantity: itemData.unit ? `${itemData.quantity} ${itemData.unit}` : itemData.quantity }, itemToUpdate.id);
+                } else {
+                  console.warn('Item not found to update:', itemData.item);
+                }
+              }
+            } else if (data.intent === 'remove') {
             const currentItems = get().items;
             for (const itemData of data.items || []) {
               const itemToRemove = currentItems.find(i => { const iName = i.name.toLowerCase().trim(); const target = itemData.item.toLowerCase().trim(); return iName === target || iName.includes(target) || target.includes(iName) || (iName + 's') === target || (target + 's') === iName || (iName + 'es') === target || (target + 'es') === iName; });
