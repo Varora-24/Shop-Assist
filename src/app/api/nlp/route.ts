@@ -8,7 +8,8 @@ const CATEGORY_MAP: Record<string, string[]> = {
   'Snacks': ['chip', 'cookie', 'cracker', 'popcorn', 'nut', 'chocolate', 'candy', 'bar', 'pretzel'],
   'Meat/Seafood': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'meat', 'bacon', 'sausage', 'lamb', 'crab', 'turkey', 'prawn', 'tofu', 'paneer', 'tempeh'],
   'Beverages': ['water', 'juice', 'soda', 'coffee', 'tea', 'coke', 'pepsi', 'drink', 'beer', 'wine', 'liquor'],
-  'Toiletries': ['toothpaste', 'toothbrush', 'soap', 'shampoo', 'conditioner', 'lotion', 'deodorant', 'razor', 'shave', 'floss', 'mouthwash', 'body wash', 'tissue', 'toilet paper', 'paper towel', 'napkin', 'pad', 'tampon']
+  'Toiletries': ['toothpaste', 'toothbrush', 'soap', 'shampoo', 'conditioner', 'lotion', 'deodorant', 'razor', 'shave', 'floss', 'mouthwash', 'body wash', 'tissue', 'toilet paper', 'paper towel', 'napkin', 'pad', 'tampon'],
+  'Electronics': ['tv', 'television', 'radio', 'phone', 'smartphone', 'laptop', 'computer', 'mouse', 'keyboard', 'headphone', 'earphone', 'speaker', 'charger', 'battery', 'cable', 'wire', 'monitor', 'tablet', 'screen', 'electronics', 'gadget']
 };
 
 const LIQUID_ITEMS = ['juice', 'lemon juice', 'milk', 'water', 'oil', 'soda', 'coke', 'pepsi', 'tea', 'coffee', 'syrup', 'vinegar', 'sauce'];
@@ -140,7 +141,7 @@ export function fallbackRegexParser(text: string) {
   const filteredItems = validItems.filter(i => {
     // Check adversarial words
     const lower = i.item.toLowerCase();
-    const isAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro'].some(k => lower.includes(k));
+    const isAdversarial = ['dynamite', 'helicopter', 'jet', 'submarine', 'gun', 'weapon', 'human', 'condom', 'breast', 'million', 'dollar', 'euro', 'leg', 'legs', 'hand', 'hands', 'arm', 'arms', 'head', 'foot', 'feet', 'finger', 'toe', 'eye', 'ear', 'nose', 'mouth', 'vehicle', 'car', 'truck', 'bike', 'motorcycle', 'boat', 'airplane', 'aircraft'].some(k => lower.includes(k));
     if (isAdversarial) return false;
     
     return true;
